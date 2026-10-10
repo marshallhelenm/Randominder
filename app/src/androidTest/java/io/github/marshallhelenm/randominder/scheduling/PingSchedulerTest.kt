@@ -29,16 +29,6 @@ import kotlin.random.Random
 
 @RunWith(AndroidJUnit4::class)
 class PingSchedulerTest {
-    private class FakeAlarms : AlarmScheduler {
-        var armedAt: Long? = null
-        override fun schedule(atMillis: Long) {
-            armedAt = atMillis
-        }
-        override fun cancel() {
-            armedAt = null
-        }
-    }
-
     private val zone = ZoneId.of("America/New_York")
     // 2026-10-12 is a Monday.
     private val monday = LocalDate.of(2026, 10, 12)

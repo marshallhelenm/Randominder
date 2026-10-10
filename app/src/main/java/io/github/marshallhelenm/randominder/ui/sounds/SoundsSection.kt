@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -61,10 +62,12 @@ private fun SoundsList(
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // The top bar names the screen now, so this spot explains the switches instead.
             Text(
-                text = stringResource(R.string.sounds_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f)
+                text = stringResource(R.string.sounds_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f).padding(end = 8.dp)
             )
             if (canImport) {
                 OutlinedButton(onClick = onImport) { Text(stringResource(R.string.sounds_import)) }
