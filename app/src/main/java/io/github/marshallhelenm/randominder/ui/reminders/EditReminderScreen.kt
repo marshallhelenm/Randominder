@@ -40,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -134,6 +136,13 @@ private fun ReminderFormContent(
 
         Section(title = stringResource(R.string.reminder_ping_count)) {
             PingCountStepper(count = form.pingCount, onChange = { count -> onChange { it.copy(pingCount = count) } })
+            if (form.pingsMayBunch) {
+                Text(
+                    text = stringResource(R.string.pings_may_bunch),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         Section(title = stringResource(R.string.reminder_days)) {
@@ -206,7 +215,12 @@ private fun ErrorText(text: String) {
 @Composable
 private fun TimeButton(label: String, time: LocalTime, onPick: (LocalTime) -> Unit) {
     var picking by rememberSaveable { mutableStateOf(false) }
-    OutlinedButton(onClick = { picking = true }) { Text(formatTime(time)) }
+    val shown = formatTime(time)
+    // Without this a screen reader only hears "9:00 AM", not which end of the window it is.
+    val description = stringResource(R.string.time_button_description, label, shown)
+    OutlinedButton(onClick = { picking = true }, modifier = Modifier.semantics { contentDescription = description }) {
+        Text(shown)
+    }
     if (!picking) return
     val state = rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute)
     // Typing is quicker than the dial for exact times, so both are offered.

@@ -71,6 +71,20 @@ class ReminderFormTest {
     }
 
     @Test
+    fun pingsMayBunch_whenAverageSpacingIsUnderTenMinutes() {
+        val hour = valid.copy(windowStart = LocalTime.of(9, 0), windowEnd = LocalTime.of(10, 0))
+        assertEquals(false, hour.copy(pingCount = 6).pingsMayBunch) // exactly 10 minutes apart
+        assertEquals(true, hour.copy(pingCount = 7).pingsMayBunch)
+        assertEquals(false, valid.copy(pingCount = 20).pingsMayBunch) // 9-5 with 20 pings: 24 minutes apart
+    }
+
+    @Test
+    fun pingsMayBunch_ignoresAnEmptyWindow() {
+        // The window error covers this case; no second warning on top.
+        assertEquals(false, valid.copy(windowStart = LocalTime.of(10, 0), windowEnd = LocalTime.of(9, 0)).pingsMayBunch)
+    }
+
+    @Test
     fun from_roundTripsThroughToReminder() {
         val reminder = Reminder(
             id = 3, name = "Water", enabled = false,

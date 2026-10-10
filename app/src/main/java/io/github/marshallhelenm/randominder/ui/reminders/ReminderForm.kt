@@ -3,6 +3,7 @@ package io.github.marshallhelenm.randominder.ui.reminders
 import io.github.marshallhelenm.randominder.model.Reminder
 import io.github.marshallhelenm.randominder.model.ReminderMessage
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalTime
 
 enum class FormError { NAME_MISSING, WINDOW_EMPTY, NO_DAYS }
@@ -25,6 +26,14 @@ data class ReminderForm(
             if (daysOfWeek.isEmpty()) add(FormError.NO_DAYS)
         }
 
+    /**
+     * When the phone is idle, Android only lets an app's alarms wake it about once every 9 minutes, so
+     * pings averaging closer than [CLOSE_PING_SPACING] may arrive late or together.
+     */
+    val pingsMayBunch: Boolean
+        get() = windowEnd.isAfter(windowStart) &&
+            Duration.between(windowStart, windowEnd).dividedBy(pingCount.coerceIn(PING_RANGE).toLong()) < CLOSE_PING_SPACING
+
     /** Blank lines are dropped rather than saved as empty pings. */
     val savedMessages: List<String> get() = messages.map(String::trim).filter(String::isNotEmpty)
 
@@ -46,6 +55,7 @@ data class ReminderForm(
 
     companion object {
         val PING_RANGE = 1..20
+        val CLOSE_PING_SPACING: Duration = Duration.ofMinutes(10)
 
         fun from(reminder: Reminder, messages: List<ReminderMessage>) = ReminderForm(
             name = reminder.name,

@@ -36,6 +36,8 @@
     <string name="reminder_window_start">Start of window</string>
     <string name="reminder_window_end">End of window</string>
     <string name="reminder_ping_count">Pings per day</string>
+    <string name="pings_may_bunch">These pings are less than 10 minutes apart on average. While the phone is idle, Android may deliver some late or together.</string>
+    <string name="time_button_description">%1$s, %2$s</string>
     <string name="ping_count_increase">More pings</string>
     <string name="ping_count_decrease">Fewer pings</string>
     <string name="reminder_days">On these days</string>
