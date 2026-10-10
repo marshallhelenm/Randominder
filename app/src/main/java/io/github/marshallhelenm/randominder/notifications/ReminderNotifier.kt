@@ -49,7 +49,7 @@ class ReminderNotifier(private val context: Context) {
         val channelId = ping.sound?.let(::channelIdFor) ?: DEFAULT_CHANNEL_ID
         if (manager.getNotificationChannelCompat(channelId) == null) manager.createNotificationChannel(defaultChannel())
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_notification_logo)
             .setContentTitle(ping.title)
             .setContentText(ping.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(ping.text))

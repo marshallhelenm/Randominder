@@ -97,7 +97,11 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            AppTopBar(title = title, onBack = if (currentScreen == AppScreen.EditReminder) { { leave(AppScreen.Reminders) } } else null)
+            AppTopBar(
+                title = title,
+                onBack = if (currentScreen == AppScreen.EditReminder) { { leave(AppScreen.Reminders) } } else null,
+                showLogo = currentScreen == AppScreen.Reminders
+            )
         },
         bottomBar = {
             AppBottomBar(
