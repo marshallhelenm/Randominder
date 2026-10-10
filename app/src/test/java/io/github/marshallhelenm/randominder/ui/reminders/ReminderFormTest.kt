@@ -93,9 +93,24 @@ class ReminderFormTest {
         )
         val messages = listOf(ReminderMessage(id = 1, reminderId = 3, text = "Sip"), ReminderMessage(id = 2, reminderId = 3, text = "Glass"))
 
-        val form = ReminderForm.from(reminder, messages)
+        val form = ReminderForm.from(reminder.copy(useAllSounds = false), messages, listOf(4L, 9L))
 
         assertEquals(listOf("Sip", "Glass"), form.messages)
-        assertEquals(reminder, form.toReminder(id = 3, lastMessage = "Sip"))
+        assertEquals(setOf(4L, 9L), form.chosenSoundIds)
+        assertEquals(reminder.copy(useAllSounds = false), form.toReminder(id = 3, lastMessage = "Sip"))
+    }
+
+    @Test
+    fun choosingSoundsButPickingNone_isAnError() {
+        assertEquals(setOf(FormError.NO_SOUNDS), valid.copy(useAllSounds = false).errors)
+        assertEquals(emptySet<FormError>(), valid.copy(useAllSounds = false, chosenSoundIds = setOf(1L)).errors)
+        assertEquals(emptySet<FormError>(), valid.copy(useAllSounds = true).errors)
+    }
+
+    @Test
+    fun differsFrom_ignoresChoicesKeptWhileAllSoundsIsOn() {
+        // Flipping to "choose", ticking a sound, then back to "all" saves nothing different.
+        assertEquals(false, valid.copy(chosenSoundIds = setOf(3L)).differsFrom(valid))
+        assertEquals(true, valid.copy(useAllSounds = false, chosenSoundIds = setOf(3L)).differsFrom(valid))
     }
 }

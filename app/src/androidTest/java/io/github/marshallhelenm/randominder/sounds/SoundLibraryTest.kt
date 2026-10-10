@@ -3,6 +3,7 @@ package io.github.marshallhelenm.randominder.sounds
 import android.app.NotificationManager
 import android.content.Context
 import android.media.MediaMetadataRetriever
+import android.media.RingtoneManager
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.core.net.toUri
@@ -203,6 +204,67 @@ class SoundLibraryTest {
 
         assertNotNull(system.getNotificationChannel(ReminderNotifier.channelIdFor(chime)))
         assertEquals(chime.uri, system.getNotificationChannel(ReminderNotifier.channelIdFor(chime)).sound.toString())
+    }
+
+    @Test
+    fun sections_putEveryBundledSoundInANamedGroup_andImportsAndPhoneSoundsInTheirOwn() = runBlocking {
+        library.ensureBundled()
+        db.soundDao().insert(Sound(displayName = "Mine", uri = "content://media/1", source = SoundSource.IMPORTED))
+        db.soundDao().insert(Sound(displayName = "Chime", uri = "content://media/internal/2", source = SoundSource.PHONE))
+
+        val sections = library.sections(db.soundDao().getAll())
+
+        val byGroup = sections.associate { it.group to it.sounds.map { s -> s.displayName } }
+        assertEquals(BUNDLED_SOUNDS.size, sections.filter { it.group !in setOf(SoundGroup.YOURS, SoundGroup.PHONE) }.sumOf { it.sounds.size })
+        assertEquals(listOf("Mine"), byGroup[SoundGroup.YOURS])
+        assertEquals(listOf("Chime"), byGroup[SoundGroup.PHONE])
+        // Listed in group order, so the Sounds tab and the picker always agree.
+        assertEquals(sections.map { it.group }, sections.map { it.group }.sortedBy { it.ordinal })
+    }
+
+    @Test
+    fun setEnabled_forAGroup_switchesExactlyThoseSounds() = runBlocking {
+        library.ensureBundled()
+        val animals = library.sections(db.soundDao().getAll()).single { it.group == SoundGroup.ANIMALS }
+
+        library.setEnabled(animals.sounds, false)
+
+        val off = db.soundDao().getAll().filterNot { it.enabled }.map { it.id }.toSet()
+        assertEquals(animals.sounds.map { it.id }.toSet(), off)
+    }
+
+    private fun firstPhoneNotificationSound(): Uri {
+        val manager = RingtoneManager(context).apply { setType(RingtoneManager.TYPE_NOTIFICATION) }
+        val cursor = manager.cursor
+        assertTrue("the device has no notification sounds", cursor.moveToFirst())
+        return manager.getRingtoneUri(0)
+    }
+
+    @Test
+    fun addPhoneSound_joinsThePoolOnce_andItsChannelKeepsTheSound() = runBlocking {
+        val uri = firstPhoneNotificationSound()
+
+        library.addPhoneSound(uri)
+        library.addPhoneSound(uri)
+
+        val phone = db.soundDao().getAll().single()
+        assertEquals(SoundSource.PHONE, phone.source)
+        assertEquals(uri.toString(), phone.uri)
+        assertTrue(phone.displayName.isNotBlank())
+        // The system must accept the phone's own sound as a channel sound, not swap in the default.
+        assertEquals(phone.uri, system.getNotificationChannel(ReminderNotifier.channelIdFor(phone)).sound.toString())
+        library.remove(phone)
+    }
+
+    @Test
+    fun removePhoneSound_leavesThePhonesFileAlone() = runBlocking {
+        val uri = firstPhoneNotificationSound()
+        library.addPhoneSound(uri)
+
+        library.remove(db.soundDao().getAll().single())
+
+        assertEquals(emptyList<Sound>(), db.soundDao().getAll())
+        assertTrue(readable(uri.toString()))
     }
 
     @Test

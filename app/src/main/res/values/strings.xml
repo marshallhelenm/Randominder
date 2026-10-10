@@ -68,4 +68,32 @@
     <string name="paused_until_tomorrow">All reminders are paused until tomorrow.</string>
     <string name="paused_until_resumed">All reminders are paused.</string>
     <string name="resume">Resume</string>
+    <string name="sound_group_animals">Animals</string>
+    <string name="sound_group_cartoon">Cartoon</string>
+    <string name="sound_group_game">Game sounds</string>
+    <string name="sound_group_out_and_about">Out and about</string>
+    <string name="sound_group_phone">Phone sounds</string>
+    <string name="sound_group_yours">Your sounds</string>
+    <string name="sounds_add_from_phone">Add from phone</string>
+    <string name="sounds_all_on">All on</string>
+    <string name="sounds_all_off">All off</string>
+    <string name="sound_source_phone">From your phone</string>
+    <string name="sound_group_header">%1$s (%2$d)</string>
+    <string name="sound_group_toggle">Use all %1$s sounds</string>
+    <string name="group_collapsed">Collapsed</string>
+    <string name="group_expanded">Expanded</string>
+    <string name="reminder_sounds">Sounds</string>
+    <string name="reminder_sounds_all">All sounds</string>
+    <string name="reminder_sounds_choose">Choose sounds</string>
+    <string name="reminder_sounds_pick">Choose</string>
+    <string name="reminder_sounds_pick_title">Sounds for this reminder</string>
+    <string name="reminder_sounds_pick_hint">Each ping plays one of these at random. Sounds switched off in the Sounds tab never play.</string>
+    <string name="reminder_sounds_pick_group">Choose all %1$s sounds</string>
+    <string name="reminder_sounds_off_in_tab">Off in the Sounds tab</string>
+    <plurals name="reminder_sounds_chosen">
+        <item quantity="one">%d sound chosen</item>
+        <item quantity="other">%d sounds chosen</item>
+    </plurals>
+    <string name="error_no_sounds">Pick at least one sound, or use all sounds</string>
+    <string name="done">Done</string>
 </resources>

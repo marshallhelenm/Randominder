@@ -48,6 +48,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.marshallhelenm.randominder.R
+import io.github.marshallhelenm.randominder.model.Sound
+import io.github.marshallhelenm.randominder.sounds.SoundSection
 import io.github.marshallhelenm.randominder.ui.theme.RandominderTheme
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -66,6 +68,7 @@ fun EditReminderScreen(
     LaunchedEffect(viewModel, reminderId) { viewModel.start(reminderId) }
     val form by viewModel.form.collectAsStateWithLifecycle()
     val showErrors by viewModel.showErrors.collectAsStateWithLifecycle()
+    val soundSections by viewModel.soundSections.collectAsStateWithLifecycle()
     val current = form ?: return
     ReminderFormContent(
         form = current,
@@ -75,6 +78,8 @@ fun EditReminderScreen(
         onSave = { viewModel.save(onDone) },
         onCancel = onCancel,
         onDelete = { viewModel.delete(onDone) },
+        soundSections = soundSections,
+        onPreviewSound = viewModel::preview,
         modifier = modifier
     )
 }
@@ -88,6 +93,8 @@ private fun ReminderFormContent(
     onSave: () -> Unit,
     onCancel: () -> Unit,
     onDelete: () -> Unit,
+    soundSections: List<SoundSection>,
+    onPreviewSound: (Sound) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
@@ -150,6 +157,18 @@ private fun ReminderFormContent(
         Section(title = stringResource(R.string.reminder_days)) {
             DayChips(selected = form.daysOfWeek, onChange = { days -> onChange { it.copy(daysOfWeek = days) } })
             if (FormError.NO_DAYS in errors) ErrorText(stringResource(R.string.error_no_days))
+        }
+
+        Section(title = stringResource(R.string.reminder_sounds)) {
+            ReminderSoundsChoice(
+                useAllSounds = form.useAllSounds,
+                chosenSoundIds = form.chosenSoundIds,
+                sections = soundSections,
+                showError = FormError.NO_SOUNDS in errors,
+                onUseAllSounds = { all -> onChange { it.copy(useAllSounds = all) } },
+                onChosenChange = { ids -> onChange { it.copy(chosenSoundIds = ids) } },
+                onPreview = onPreviewSound
+            )
         }
 
         Section(title = stringResource(R.string.reminder_messages)) {
@@ -311,7 +330,9 @@ private fun ReminderFormPreview() {
             onChange = {},
             onSave = {},
             onCancel = {},
-            onDelete = {}
+            onDelete = {},
+            soundSections = emptyList(),
+            onPreviewSound = {}
         )
     }
 }

@@ -3,14 +3,28 @@ package io.github.marshallhelenm.randominder.ui.reminders
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.marshallhelenm.randominder.model.Sound
+import io.github.marshallhelenm.randominder.sounds.SoundLibrary
+import io.github.marshallhelenm.randominder.sounds.SoundSection
+import io.github.marshallhelenm.randominder.ui.sounds.SoundPreviewer
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class EditReminderViewModel(application: Application) : AndroidViewModel(application) {
     private val editor = ReminderEditor.from(application)
+    private val previewer = SoundPreviewer(application)
+
+    val soundSections: StateFlow<List<SoundSection>> = SoundLibrary.from(application).observeSections()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun preview(sound: Sound) = previewer.play(sound)
+
+    override fun onCleared() = previewer.stop()
     private var reminderId: Long? = null
     private var started = false
     // The form as loaded, to tell whether leaving would lose edits.

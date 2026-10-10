@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "48316f0faf7dddb572f758eaf72e9ac2",
+    "identityHash": "c36b2e661fb68c818157412dae8fb250",
     "entities": [
       {
         "tableName": "reminders",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `windowStart` TEXT NOT NULL, `windowEnd` TEXT NOT NULL, `pingCount` INTEGER NOT NULL, `daysOfWeek` TEXT NOT NULL, `lastMessage` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `windowStart` TEXT NOT NULL, `windowEnd` TEXT NOT NULL, `pingCount` INTEGER NOT NULL, `daysOfWeek` TEXT NOT NULL, `lastMessage` TEXT, `useAllSounds` INTEGER NOT NULL DEFAULT 1)",
         "fields": [
           {
             "fieldPath": "id",
@@ -54,6 +54,13 @@
             "fieldPath": "lastMessage",
             "columnName": "lastMessage",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "useAllSounds",
+            "columnName": "useAllSounds",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
           }
         ],
         "primaryKey": {
@@ -238,11 +245,71 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "reminder_sounds",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`reminderId` INTEGER NOT NULL, `soundId` INTEGER NOT NULL, PRIMARY KEY(`reminderId`, `soundId`), FOREIGN KEY(`reminderId`) REFERENCES `reminders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`soundId`) REFERENCES `sounds`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "reminderId",
+            "columnName": "reminderId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "soundId",
+            "columnName": "soundId",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "reminderId",
+            "soundId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reminder_sounds_soundId",
+            "unique": false,
+            "columnNames": [
+              "soundId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reminder_sounds_soundId` ON `${TABLE_NAME}` (`soundId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "reminders",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "reminderId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "sounds",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "soundId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '48316f0faf7dddb572f758eaf72e9ac2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c36b2e661fb68c818157412dae8fb250')"
     ]
   }
 }

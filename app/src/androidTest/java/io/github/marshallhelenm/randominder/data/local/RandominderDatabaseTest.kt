@@ -103,6 +103,18 @@ class RandominderDatabaseTest {
     }
 
     @Test
+    fun removingASound_dropsItFromEveryRemindersChoices() = runBlocking {
+        db.reminderDao().upsert(reminder(1))
+        val bird = db.soundDao().insert(Sound(displayName = "Bird", uri = "content://media/1", source = SoundSource.IMPORTED))
+        val gong = db.soundDao().insert(Sound(displayName = "Gong", uri = "content://media/2", source = SoundSource.IMPORTED))
+        db.reminderSoundDao().replaceForReminder(1, listOf(bird, gong))
+
+        db.soundDao().deleteById(bird)
+
+        assertEquals(listOf(gong), db.reminderSoundDao().getSoundIds(1))
+    }
+
+    @Test
     fun insertingSameSoundUriTwice_keepsOneRow() = runBlocking {
         val chime = Sound(displayName = "Chime", uri = "content://media/external/audio/media/7", source = SoundSource.IMPORTED)
         val firstId = db.soundDao().insert(chime)

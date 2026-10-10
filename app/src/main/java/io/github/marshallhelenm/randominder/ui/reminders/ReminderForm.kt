@@ -6,7 +6,7 @@ import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalTime
 
-enum class FormError { NAME_MISSING, WINDOW_EMPTY, NO_DAYS }
+enum class FormError { NAME_MISSING, WINDOW_EMPTY, NO_DAYS, NO_SOUNDS }
 
 /** What the edit screen shows and changes; becomes a [Reminder] plus its messages on save. */
 data class ReminderForm(
@@ -16,7 +16,10 @@ data class ReminderForm(
     val windowEnd: LocalTime = LocalTime.of(17, 0),
     val pingCount: Int = 3,
     val daysOfWeek: Set<DayOfWeek> = DayOfWeek.entries.toSet(),
-    val messages: List<String> = emptyList()
+    val messages: List<String> = emptyList(),
+    val useAllSounds: Boolean = true,
+    // Only used when useAllSounds is off.
+    val chosenSoundIds: Set<Long> = emptySet()
 ) {
     val errors: Set<FormError>
         get() = buildSet {
@@ -24,6 +27,7 @@ data class ReminderForm(
             // Windows stay within one day, so the end has to come after the start.
             if (!windowEnd.isAfter(windowStart)) add(FormError.WINDOW_EMPTY)
             if (daysOfWeek.isEmpty()) add(FormError.NO_DAYS)
+            if (!useAllSounds && chosenSoundIds.isEmpty()) add(FormError.NO_SOUNDS)
         }
 
     /**
@@ -40,7 +44,12 @@ data class ReminderForm(
     /** Ignores edits that wouldn't change what gets saved, like trailing spaces or an empty message line. */
     fun differsFrom(other: ReminderForm): Boolean = normalized() != other.normalized()
 
-    private fun normalized() = copy(name = name.trim(), messages = savedMessages)
+    // Choices are kept while "all sounds" is on (so flipping back restores them) but aren't saved then.
+    private fun normalized() = copy(
+        name = name.trim(),
+        messages = savedMessages,
+        chosenSoundIds = if (useAllSounds) emptySet() else chosenSoundIds
+    )
 
     fun toReminder(id: Long, lastMessage: String?) = Reminder(
         id = id,
@@ -50,21 +59,24 @@ data class ReminderForm(
         windowEnd = windowEnd,
         pingCount = pingCount.coerceIn(PING_RANGE),
         daysOfWeek = daysOfWeek,
-        lastMessage = lastMessage
+        lastMessage = lastMessage,
+        useAllSounds = useAllSounds
     )
 
     companion object {
         val PING_RANGE = 1..20
         val CLOSE_PING_SPACING: Duration = Duration.ofMinutes(10)
 
-        fun from(reminder: Reminder, messages: List<ReminderMessage>) = ReminderForm(
+        fun from(reminder: Reminder, messages: List<ReminderMessage>, chosenSoundIds: Collection<Long>) = ReminderForm(
             name = reminder.name,
             enabled = reminder.enabled,
             windowStart = reminder.windowStart,
             windowEnd = reminder.windowEnd,
             pingCount = reminder.pingCount,
             daysOfWeek = reminder.daysOfWeek,
-            messages = messages.map { it.text }
+            messages = messages.map { it.text },
+            useAllSounds = reminder.useAllSounds,
+            chosenSoundIds = chosenSoundIds.toSet()
         )
     }
 }

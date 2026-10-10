@@ -59,7 +59,6 @@ class PingScheduler(
     suspend fun takeDuePings(): List<PingNotification> {
         val due = pings.getDue(clock.millis())
         pings.deleteByIds(due.map { it.id })
-        val pool = sounds.getEnabled()
         // Several due pings for one reminder (e.g. a late alarm) collapse into a single notification.
         val notifications = due.groupBy { it.reminderId }.mapNotNull { (reminderId, fired) ->
             val reminder = reminders.getById(reminderId) ?: return@mapNotNull null
@@ -73,6 +72,7 @@ class PingScheduler(
                 messages.recordShown(reminderId, it.message.id, it.newRound)
                 reminders.updateLastMessage(reminderId, it.message.text)
             }
+            val pool = if (reminder.useAllSounds) sounds.getEnabled() else sounds.getEnabledForReminder(reminderId)
             // No sound (empty pool) means the default notification sound.
             PingNotification(reminderId, reminder.name, pick?.message?.text, pool.randomOrNull(random))
         }

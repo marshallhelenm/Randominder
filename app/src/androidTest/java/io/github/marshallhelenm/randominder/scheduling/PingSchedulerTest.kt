@@ -258,6 +258,54 @@ class PingSchedulerTest {
         assertTrue(planned().all { dateOf(it) == monday })
     }
 
+    private suspend fun addSounds(vararg names: String, offNames: Set<String> = emptySet()): Map<String, Long> =
+        names.associateWith { name ->
+            db.soundDao().insert(
+                Sound(displayName = name, uri = "content://media/$name", source = SoundSource.IMPORTED, enabled = name !in offNames)
+            )
+        }
+
+    private suspend fun soundsPickedOver(pings: Int): Set<String?> = (0 until pings).map { i ->
+        db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = millis(monday.atTime(9, i)))))
+        schedulerAt(monday.atTime(9, i, 1), seed = i).takeDuePings().single().sound?.displayName
+    }.toSet()
+
+    @Test
+    fun takeDuePings_chosenSounds_onlyThoseArePicked() = runBlocking {
+        db.reminderDao().upsert(addReminder().copy(useAllSounds = false))
+        val ids = addSounds("Bird", "Bell", "Gong")
+        db.reminderSoundDao().replaceForReminder(1, listOf(ids.getValue("Bird"), ids.getValue("Gong")))
+
+        assertEquals(setOf("Bird", "Gong"), soundsPickedOver(30))
+    }
+
+    @Test
+    fun takeDuePings_chosenSoundSwitchedOffInSoundsTab_isNeverPicked() = runBlocking {
+        db.reminderDao().upsert(addReminder().copy(useAllSounds = false))
+        val ids = addSounds("Bird", "Gong", offNames = setOf("Gong"))
+        db.reminderSoundDao().replaceForReminder(1, ids.values)
+
+        assertEquals(setOf("Bird"), soundsPickedOver(20))
+    }
+
+    @Test
+    fun takeDuePings_everyChosenSoundSwitchedOff_usesDefaultSound() = runBlocking {
+        db.reminderDao().upsert(addReminder().copy(useAllSounds = false))
+        val ids = addSounds("Bird", offNames = setOf("Bird"))
+        db.reminderSoundDao().replaceForReminder(1, ids.values)
+
+        assertEquals(setOf<String?>(null), soundsPickedOver(3))
+    }
+
+    @Test
+    fun takeDuePings_useAllSounds_ignoresAnyLeftoverChoices() = runBlocking {
+        addReminder()
+        val ids = addSounds("Bird", "Bell")
+        db.reminderSoundDao().replaceForReminder(1, listOf(ids.getValue("Bird")))
+
+        assertEquals(setOf("Bird", "Bell"), soundsPickedOver(30))
+    }
+
     @Test
     fun takeDuePings_emptyPools_noBodyTextAndDefaultSound() = runBlocking {
         addReminder()

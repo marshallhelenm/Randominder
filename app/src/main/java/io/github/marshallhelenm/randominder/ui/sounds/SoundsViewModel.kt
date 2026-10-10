@@ -1,15 +1,13 @@
 package io.github.marshallhelenm.randominder.ui.sounds
 
 import android.app.Application
-import android.media.Ringtone
-import android.media.RingtoneManager
 import android.net.Uri
-import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.marshallhelenm.randominder.model.Sound
 import io.github.marshallhelenm.randominder.sounds.ImportResult
 import io.github.marshallhelenm.randominder.sounds.SoundLibrary
+import io.github.marshallhelenm.randominder.sounds.SoundSection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,11 +17,11 @@ import kotlinx.coroutines.launch
 
 class SoundsViewModel(application: Application) : AndroidViewModel(application) {
     private val library = SoundLibrary.from(application)
-    private var playing: Ringtone? = null
+    private val previewer = SoundPreviewer(application)
 
     val canImport = library.canImport
 
-    val sounds: StateFlow<List<Sound>> = library.observeAll()
+    val sections: StateFlow<List<SoundSection>> = library.observeSections()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // The last import's problem, if it had one; cleared when the next import starts.
@@ -35,20 +33,28 @@ class SoundsViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { _importProblem.value = library.import(source).takeIf { it !is ImportResult.Added } }
     }
 
+    fun addPhoneSound(uri: Uri) {
+        _importProblem.value = null
+        viewModelScope.launch { library.addPhoneSound(uri) }
+    }
+
     fun setEnabled(sound: Sound, enabled: Boolean) {
         viewModelScope.launch { library.setEnabled(sound, enabled) }
+    }
+
+    fun setEnabled(section: SoundSection, enabled: Boolean) {
+        viewModelScope.launch { library.setEnabled(section.sounds, enabled) }
+    }
+
+    fun setAllEnabled(enabled: Boolean) {
+        viewModelScope.launch { library.setEnabled(sections.value.flatMap { it.sounds }, enabled) }
     }
 
     fun remove(sound: Sound) {
         viewModelScope.launch { library.remove(sound) }
     }
 
-    fun preview(sound: Sound) {
-        playing?.stop()
-        playing = RingtoneManager.getRingtone(getApplication(), sound.uri.toUri())?.also { it.play() }
-    }
+    fun preview(sound: Sound) = previewer.play(sound)
 
-    override fun onCleared() {
-        playing?.stop()
-    }
+    override fun onCleared() = previewer.stop()
 }

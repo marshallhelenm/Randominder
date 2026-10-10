@@ -8,7 +8,9 @@ enum class SoundSource {
     // Shipped in res/raw; the system can read android.resource:// URIs directly.
     BUNDLED,
     // Picked from the device and copied into the shared media library so the system can play it.
-    IMPORTED
+    IMPORTED,
+    // One of the phone's own notification sounds, used in place; removing it never touches the file.
+    PHONE
 }
 
 // App-wide pool: every reminder draws from all of these. Each sound gets its own notification channel.

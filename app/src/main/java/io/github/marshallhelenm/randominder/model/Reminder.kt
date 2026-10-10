@@ -1,5 +1,6 @@
 package io.github.marshallhelenm.randominder.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.DayOfWeek
@@ -17,5 +18,8 @@ data class Reminder(
     val pingCount: Int,
     val daysOfWeek: Set<DayOfWeek>,
     // Remembered so the next ping can avoid showing the same text twice in a row.
-    val lastMessage: String? = null
+    val lastMessage: String? = null,
+    // False means the reminder draws only from the sounds it chose (reminder_sounds).
+    @ColumnInfo(defaultValue = "1")
+    val useAllSounds: Boolean = true
 )

@@ -7,11 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import io.github.marshallhelenm.randominder.model.Reminder
 import io.github.marshallhelenm.randominder.model.ReminderMessage
+import io.github.marshallhelenm.randominder.model.ReminderSound
 import io.github.marshallhelenm.randominder.model.ScheduledPing
 import io.github.marshallhelenm.randominder.model.Sound
 
 @Database(
-    entities = [Reminder::class, ReminderMessage::class, Sound::class, ScheduledPing::class],
+    entities = [Reminder::class, ReminderMessage::class, Sound::class, ScheduledPing::class, ReminderSound::class],
     version = 1,
     exportSchema = true
 )
@@ -21,6 +22,7 @@ abstract class RandominderDatabase : RoomDatabase() {
     abstract fun reminderMessageDao(): ReminderMessageDao
     abstract fun soundDao(): SoundDao
     abstract fun scheduledPingDao(): ScheduledPingDao
+    abstract fun reminderSoundDao(): ReminderSoundDao
 
     companion object {
         @Volatile

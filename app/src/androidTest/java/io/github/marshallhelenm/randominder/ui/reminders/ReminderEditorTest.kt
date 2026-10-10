@@ -6,6 +6,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.marshallhelenm.randominder.data.local.RandominderDatabase
 import io.github.marshallhelenm.randominder.model.ReminderMessage
 import io.github.marshallhelenm.randominder.model.ScheduledPing
+import io.github.marshallhelenm.randominder.model.Sound
+import io.github.marshallhelenm.randominder.model.SoundSource
 import io.github.marshallhelenm.randominder.scheduling.FakeAlarms
 import io.github.marshallhelenm.randominder.scheduling.FakePauseStore
 import io.github.marshallhelenm.randominder.scheduling.PingScheduler
@@ -83,6 +85,20 @@ class ReminderEditorTest {
         val loaded = editor.load(id)!!
 
         assertEquals(form.copy(windowStart = LocalTime.of(10, 15), messages = form.savedMessages), loaded)
+    }
+
+    @Test
+    fun chosenSounds_roundTrip_andSwitchingBackToAllClearsThem() = runBlocking {
+        val bird = db.soundDao().insert(Sound(displayName = "Bird", uri = "content://media/1", source = SoundSource.IMPORTED))
+        val id = editor.save(null, form.copy(useAllSounds = false, chosenSoundIds = setOf(bird)))
+
+        val loaded = editor.load(id)!!
+        assertEquals(false, loaded.useAllSounds)
+        assertEquals(setOf(bird), loaded.chosenSoundIds)
+
+        editor.save(id, loaded.copy(useAllSounds = true))
+        assertEquals(emptyList<Long>(), db.reminderSoundDao().getSoundIds(id))
+        assertEquals(true, db.reminderDao().getById(id)!!.useAllSounds)
     }
 
     @Test

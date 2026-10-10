@@ -20,11 +20,12 @@ class ReminderEditor(
 ) {
     private val reminders = db.reminderDao()
     private val messages = db.reminderMessageDao()
+    private val chosenSounds = db.reminderSoundDao()
 
     fun observeAll(): Flow<List<Reminder>> = reminders.observeAll()
 
     suspend fun load(id: Long): ReminderForm? =
-        reminders.getById(id)?.let { ReminderForm.from(it, messages.getForReminder(id)) }
+        reminders.getById(id)?.let { ReminderForm.from(it, messages.getForReminder(id), chosenSounds.getSoundIds(id)) }
 
     /** Saves [form] as reminder [id], or as a new reminder when [id] is null. Returns the reminder's id. */
     suspend fun save(id: Long?, form: ReminderForm): Long {
@@ -35,6 +36,7 @@ class ReminderEditor(
             val inserted = reminders.upsert(reminder)
             val newId = existing?.id ?: inserted
             messages.replaceForReminder(newId, form.savedMessages)
+            chosenSounds.replaceForReminder(newId, if (form.useAllSounds) emptySet() else form.chosenSoundIds)
             newId
         }
         scheduler.replan(savedId)
