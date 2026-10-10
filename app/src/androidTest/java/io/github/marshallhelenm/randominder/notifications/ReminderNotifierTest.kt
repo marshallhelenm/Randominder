@@ -66,6 +66,15 @@ class ReminderNotifierTest {
     }
 
     @Test
+    fun syncChannels_pingChannelsPopUpOverTheScreen() {
+        notifier.syncChannels(listOf(chime))
+
+        // IMPORTANCE_HIGH is what makes Android show a heads-up banner at the top of the screen.
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, system.getNotificationChannel(ReminderNotifier.channelIdFor(chime)).importance)
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, system.getNotificationChannel(ReminderNotifier.DEFAULT_CHANNEL_ID).importance)
+    }
+
+    @Test
     fun syncChannels_removesChannelsForSoundsLeavingThePool() {
         notifier.syncChannels(listOf(chime, bird))
         notifier.syncChannels(listOf(chime))

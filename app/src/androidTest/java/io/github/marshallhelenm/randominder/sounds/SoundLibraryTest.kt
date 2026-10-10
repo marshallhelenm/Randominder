@@ -2,7 +2,9 @@ package io.github.marshallhelenm.randominder.sounds
 
 import android.app.NotificationManager
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,6 +24,9 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.time.Duration
 
 // Uses the device's real MediaStore and notification service; needs API 29+ for imports.
 @RunWith(AndroidJUnit4::class)
@@ -51,6 +56,26 @@ class SoundLibraryTest {
 
     private fun sourceFile(name: String, bytes: ByteArray): Uri =
         File(context.cacheDir, name).apply { writeBytes(bytes) }.let(Uri::fromFile)
+
+    // 8kHz 8-bit mono PCM: small enough to generate in a test, long enough to cross the limit.
+    private fun silentWav(seconds: Int): ByteArray {
+        val samples = 8_000 * seconds
+        val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN).apply {
+            put("RIFF".toByteArray()); putInt(36 + samples); put("WAVE".toByteArray())
+            put("fmt ".toByteArray()); putInt(16); putShort(1); putShort(1); putInt(8_000); putInt(8_000)
+            putShort(1); putShort(8)
+            put("data".toByteArray()); putInt(samples)
+        }.array()
+        return header + ByteArray(samples) { 128.toByte() }
+    }
+
+    private fun mediaStoreCopiesNamed(name: String): Int = context.contentResolver.query(
+        MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+        arrayOf(MediaStore.Audio.Media._ID),
+        "${MediaStore.Audio.Media.DISPLAY_NAME} = ?",
+        arrayOf(name),
+        null
+    )?.use { it.count } ?: 0
 
     private fun readable(uri: String): Boolean =
         try {
@@ -94,7 +119,7 @@ class SoundLibraryTest {
     fun import_copiesIntoMediaStore_andItsChannelKeepsTheSound() = runBlocking {
         val bytes = bundledBytes("boing")
 
-        val sound = library.import(sourceFile("Birdsong.mp3", bytes))!!.also { imported += it }
+        val sound = (library.import(sourceFile("Birdsong.mp3", bytes)) as ImportResult.Added).sound.also { imported += it }
 
         assertEquals("Birdsong", sound.displayName)
         assertEquals(SoundSource.IMPORTED, sound.source)
@@ -110,13 +135,44 @@ class SoundLibraryTest {
     fun import_nonAudio_isRejectedWithoutLeavingAnything() = runBlocking {
         val result = library.import(sourceFile("notes.txt", "not audio".toByteArray()))
 
-        assertNull(result)
+        assertEquals(ImportResult.NotAudio, result)
         assertEquals(emptyList<Sound>(), db.soundDao().getAll())
     }
 
     @Test
+    fun import_longerThanTheLimit_isRejectedWithoutLeavingAnything() = runBlocking {
+        val result = library.import(sourceFile("Song.wav", silentWav(seconds = 31)))
+
+        assertEquals(ImportResult.TooLong, result)
+        assertEquals(emptyList<Sound>(), db.soundDao().getAll())
+        assertEquals(0, mediaStoreCopiesNamed("Song.wav"))
+    }
+
+    @Test
+    fun import_justUnderTheLimit_isAdded() = runBlocking {
+        val result = library.import(sourceFile("Chime.wav", silentWav(seconds = 29)))
+
+        assertTrue(result is ImportResult.Added)
+        imported += (result as ImportResult.Added).sound
+    }
+
+    @Test
+    fun bundledSounds_areAllWithinTheImportLimit() {
+        val retriever = MediaMetadataRetriever()
+        try {
+            BUNDLED_SOUNDS.forEach {
+                retriever.setDataSource(context, "android.resource://${context.packageName}/${it.rawRes}".toUri())
+                val millis = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong()
+                assertTrue("${it.displayName} is ${millis}ms", Duration.ofMillis(millis) <= SoundLibrary.MAX_SOUND_LENGTH)
+            }
+        } finally {
+            retriever.release()
+        }
+    }
+
+    @Test
     fun remove_deletesRowFileAndChannel() = runBlocking {
-        val sound = library.import(sourceFile("Gong.mp3", bundledBytes("duck_quack")))!!
+        val sound = (library.import(sourceFile("Gong.mp3", bundledBytes("duck_quack"))) as ImportResult.Added).sound
         assertNotNull(system.getNotificationChannel(ReminderNotifier.channelIdFor(sound)))
 
         library.remove(sound)

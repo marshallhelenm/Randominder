@@ -33,7 +33,7 @@ class ReminderNotifier(private val context: Context) {
             .build()
         val channels = sounds.map {
             // A channel's sound can't change after creation, so the id is tied to the sound itself, not its name.
-            NotificationChannelCompat.Builder(channelIdFor(it), NotificationManagerCompat.IMPORTANCE_DEFAULT)
+            NotificationChannelCompat.Builder(channelIdFor(it), PING_IMPORTANCE)
                 .setName(context.getString(R.string.sound_channel_name, it.displayName))
                 .setSound(it.uri.toUri(), audio)
                 .build()
@@ -55,6 +55,8 @@ class ReminderNotifier(private val context: Context) {
             .setSmallIcon(R.drawable.ic_notification_logo)
             .setContentTitle(ping.title)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            // Android 7 has no channels; this is what makes the ping pop up there.
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(openAppIntent())
             .setAutoCancel(true)
         // A reminder without messages shows only its name, rather than repeating it as the body.
@@ -66,7 +68,7 @@ class ReminderNotifier(private val context: Context) {
     }
 
     private fun defaultChannel() =
-        NotificationChannelCompat.Builder(DEFAULT_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+        NotificationChannelCompat.Builder(DEFAULT_CHANNEL_ID, PING_IMPORTANCE)
             .setName(context.getString(R.string.default_channel_name))
             .build()
 
@@ -79,6 +81,10 @@ class ReminderNotifier(private val context: Context) {
 
     companion object {
         const val DEFAULT_CHANNEL_ID = "reminders_default"
+
+        // High importance shows each ping as a banner over the top of the screen. Android freezes a
+        // channel's importance once it exists on a device, so changing this later needs new channel ids.
+        const val PING_IMPORTANCE = NotificationManagerCompat.IMPORTANCE_HIGH
 
         // Android revives a deleted channel's old settings if its id is reused, so the id must change
         // whenever the file does, even if a sound row id is reused (e.g. after the database is recreated).

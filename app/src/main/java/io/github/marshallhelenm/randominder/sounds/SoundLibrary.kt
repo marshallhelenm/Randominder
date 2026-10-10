@@ -2,6 +2,7 @@ package io.github.marshallhelenm.randominder.sounds
 
 import android.content.ContentValues
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -20,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.time.Duration
 
 /** Sounds shipped in res/raw. Referenced through R so resource shrinking keeps them. */
 data class BundledSound(@param:RawRes val rawRes: Int, val displayName: String)
@@ -71,6 +73,12 @@ val BUNDLED_SOUNDS = listOf(
     BundledSound(R.raw.yippee, "Yippee")
 )
 
+sealed interface ImportResult {
+    data class Added(val sound: Sound) : ImportResult
+    data object NotAudio : ImportResult
+    data object TooLong : ImportResult
+}
+
 /** Keeps the sound pool, the files behind it, and the per-sound notification channels in step. */
 class SoundLibrary(private val context: Context, db: RandominderDatabase) {
     private val sounds = db.soundDao()
@@ -99,13 +107,16 @@ class SoundLibrary(private val context: Context, db: RandominderDatabase) {
 
     /**
      * Copies [source] into the shared Notifications/Randominder folder and adds it to the pool.
-     * Returns null if it isn't audio or can't be copied. The system only plays a channel sound the app
-     * itself can read, and an app can always read media entries it created.
+     * The system only plays a channel sound the app itself can read, and an app can always read media
+     * entries it created.
      */
-    suspend fun import(source: Uri): Sound? = withContext(Dispatchers.IO) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext null
+    suspend fun import(source: Uri): ImportResult = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext ImportResult.NotAudio
+        // A notification sound plays to the end, so a whole song would play on every ping.
+        val length = lengthOf(source) ?: return@withContext ImportResult.NotAudio
+        if (length > MAX_SOUND_LENGTH) return@withContext ImportResult.TooLong
         val fileName = displayNameOf(source)
-        val target = copyIntoMediaStore(source, fileName ?: "sound") ?: return@withContext null
+        val target = copyIntoMediaStore(source, fileName ?: "sound") ?: return@withContext ImportResult.NotAudio
         val sound = Sound(
             displayName = fileName?.substringBeforeLast('.')?.ifBlank { null } ?: "Imported sound",
             uri = target.toString(),
@@ -113,7 +124,7 @@ class SoundLibrary(private val context: Context, db: RandominderDatabase) {
         )
         val id = sounds.insert(sound)
         syncChannels()
-        sound.copy(id = id)
+        ImportResult.Added(sound.copy(id = id))
     }
 
     suspend fun setEnabled(sound: Sound, enabled: Boolean) = sounds.setEnabled(sound.id, enabled)
@@ -164,6 +175,19 @@ class SoundLibrary(private val context: Context, db: RandominderDatabase) {
         }
     }
 
+    // Null when the file can't be read as audio at all.
+    private fun lengthOf(source: Uri): Duration? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, source)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.let(Duration::ofMillis)
+        } catch (_: RuntimeException) {
+            null
+        } finally {
+            retriever.release()
+        }
+    }
+
     private fun mimeTypeFromName(fileName: String): String? =
         MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substringAfterLast('.', "").lowercase())
 
@@ -175,6 +199,8 @@ class SoundLibrary(private val context: Context, db: RandominderDatabase) {
     }
 
     companion object {
+        val MAX_SOUND_LENGTH: Duration = Duration.ofSeconds(30)
+
         fun from(context: Context) =
             SoundLibrary(context.applicationContext, RandominderDatabase.getInstance(context))
     }

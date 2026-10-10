@@ -28,19 +28,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.marshallhelenm.randominder.R
 import io.github.marshallhelenm.randominder.model.Sound
 import io.github.marshallhelenm.randominder.model.SoundSource
+import io.github.marshallhelenm.randominder.sounds.ImportResult
 import io.github.marshallhelenm.randominder.ui.theme.RandominderTheme
 
 @Composable
 fun SoundsScreen(modifier: Modifier = Modifier, viewModel: SoundsViewModel = viewModel()) {
     val sounds by viewModel.sounds.collectAsStateWithLifecycle()
-    val importFailed by viewModel.importFailed.collectAsStateWithLifecycle()
+    val importProblem by viewModel.importProblem.collectAsStateWithLifecycle()
     val pickAudio = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let(viewModel::import)
     }
     SoundsList(
         sounds = sounds,
         canImport = viewModel.canImport,
-        importFailed = importFailed,
+        importProblem = importProblem,
         onImport = { pickAudio.launch("audio/*") },
         onPreview = viewModel::preview,
         onToggle = viewModel::setEnabled,
@@ -53,7 +54,7 @@ fun SoundsScreen(modifier: Modifier = Modifier, viewModel: SoundsViewModel = vie
 private fun SoundsList(
     sounds: List<Sound>,
     canImport: Boolean,
-    importFailed: Boolean,
+    importProblem: ImportResult?,
     onImport: () -> Unit,
     onPreview: (Sound) -> Unit,
     onToggle: (Sound, Boolean) -> Unit,
@@ -73,9 +74,12 @@ private fun SoundsList(
                 OutlinedButton(onClick = onImport) { Text(stringResource(R.string.sounds_import)) }
             }
         }
-        if (importFailed) {
-            Text(text = stringResource(R.string.sounds_import_failed), color = MaterialTheme.colorScheme.error)
+        val problem = when (importProblem) {
+            ImportResult.TooLong -> R.string.sounds_import_too_long
+            ImportResult.NotAudio -> R.string.sounds_import_failed
+            is ImportResult.Added, null -> null
         }
+        problem?.let { Text(text = stringResource(it), color = MaterialTheme.colorScheme.error) }
         LazyColumn {
             items(sounds, key = { it.id }) { sound ->
                 SoundRow(
@@ -125,7 +129,7 @@ private fun SoundsListPreview() {
                 Sound(id = 2, displayName = "Birdsong", uri = "", source = SoundSource.IMPORTED, enabled = false)
             ),
             canImport = true,
-            importFailed = true,
+            importProblem = ImportResult.TooLong,
             onImport = {},
             onPreview = {},
             onToggle = { _, _ -> },

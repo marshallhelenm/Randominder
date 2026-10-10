@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.marshallhelenm.randominder.model.Sound
+import io.github.marshallhelenm.randominder.sounds.ImportResult
 import io.github.marshallhelenm.randominder.sounds.SoundLibrary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,12 +26,13 @@ class SoundsViewModel(application: Application) : AndroidViewModel(application) 
     val sounds: StateFlow<List<Sound>> = library.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _importFailed = MutableStateFlow(false)
-    val importFailed: StateFlow<Boolean> = _importFailed.asStateFlow()
+    // The last import's problem, if it had one; cleared when the next import starts.
+    private val _importProblem = MutableStateFlow<ImportResult?>(null)
+    val importProblem: StateFlow<ImportResult?> = _importProblem.asStateFlow()
 
     fun import(source: Uri) {
-        _importFailed.value = false
-        viewModelScope.launch { _importFailed.value = library.import(source) == null }
+        _importProblem.value = null
+        viewModelScope.launch { _importProblem.value = library.import(source).takeIf { it !is ImportResult.Added } }
     }
 
     fun setEnabled(sound: Sound, enabled: Boolean) {
