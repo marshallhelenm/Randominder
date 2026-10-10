@@ -34,10 +34,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -98,6 +102,9 @@ private fun ReminderFormContent(
     modifier: Modifier = Modifier
 ) {
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
+    // The index of a message field "Add message" just created, so it alone takes focus. Kept as an index
+    // rather than "the last field" because the new field only appears once the form update comes back.
+    var focusMessageAt by remember { mutableStateOf<Int?>(null) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -181,10 +188,15 @@ private fun ReminderFormContent(
                 MessageField(
                     text = text,
                     onTextChange = { new -> onChange { it.copy(messages = it.messages.replaceAt(index, new)) } },
-                    onRemove = { onChange { it.copy(messages = it.messages.removeAt(index)) } }
+                    onRemove = { onChange { it.copy(messages = it.messages.removeAt(index)) } },
+                    focusNow = index == focusMessageAt,
+                    onFocused = { focusMessageAt = null }
                 )
             }
-            TextButton(onClick = { onChange { it.copy(messages = it.messages + "") } }) {
+            TextButton(onClick = {
+                focusMessageAt = form.messages.size
+                onChange { it.copy(messages = it.messages + "") }
+            }) {
                 Icon(painterResource(R.drawable.ic_add), contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.reminder_add_message))
@@ -301,13 +313,29 @@ private fun DayChips(selected: Set<DayOfWeek>, onChange: (Set<DayOfWeek>) -> Uni
 }
 
 @Composable
-private fun MessageField(text: String, onTextChange: (String) -> Unit, onRemove: () -> Unit) {
+private fun MessageField(
+    text: String,
+    onTextChange: (String) -> Unit,
+    onRemove: () -> Unit,
+    focusNow: Boolean,
+    onFocused: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Focus alone moves the cursor and scrolls the field into view but doesn't reliably open the keyboard.
+    LaunchedEffect(focusNow) {
+        if (focusNow) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+            onFocused()
+        }
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).focusRequester(focusRequester)
         )
         IconButton(onClick = onRemove) {
             Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.reminder_remove_message))

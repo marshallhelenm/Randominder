@@ -5,7 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.marshallhelenm.randominder.model.Sound
-import io.github.marshallhelenm.randominder.sounds.ImportResult
+import io.github.marshallhelenm.randominder.sounds.ImportSummary
+import io.github.marshallhelenm.randominder.sounds.PhoneSound
 import io.github.marshallhelenm.randominder.sounds.SoundLibrary
 import io.github.marshallhelenm.randominder.sounds.SoundSection
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,19 +25,32 @@ class SoundsViewModel(application: Application) : AndroidViewModel(application) 
     val sections: StateFlow<List<SoundSection>> = library.observeSections()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // The last import's problem, if it had one; cleared when the next import starts.
-    private val _importProblem = MutableStateFlow<ImportResult?>(null)
-    val importProblem: StateFlow<ImportResult?> = _importProblem.asStateFlow()
+    // What the last batch of files did; cleared when the next one starts.
+    private val _importSummary = MutableStateFlow<ImportSummary?>(null)
+    val importSummary: StateFlow<ImportSummary?> = _importSummary.asStateFlow()
 
-    fun import(source: Uri) {
-        _importProblem.value = null
-        viewModelScope.launch { _importProblem.value = library.import(source).takeIf { it !is ImportResult.Added } }
+    // Null until the "Built-in phone sounds" list has been opened and loaded.
+    private val _phoneSounds = MutableStateFlow<List<PhoneSound>?>(null)
+    val phoneSounds: StateFlow<List<PhoneSound>?> = _phoneSounds.asStateFlow()
+
+    fun import(sources: List<Uri>) {
+        if (sources.isEmpty()) return
+        _importSummary.value = null
+        viewModelScope.launch { _importSummary.value = ImportSummary.of(sources.map { library.import(it) }) }
     }
 
-    fun addPhoneSound(uri: Uri) {
-        _importProblem.value = null
-        viewModelScope.launch { library.addPhoneSound(uri) }
+    fun loadPhoneSounds() {
+        if (_phoneSounds.value != null) return
+        viewModelScope.launch { _phoneSounds.value = library.phoneNotificationSounds() }
     }
+
+    fun addPhoneSounds(chosen: List<PhoneSound>) {
+        viewModelScope.launch { library.addPhoneSounds(chosen) }
+    }
+
+    fun preview(phoneSound: PhoneSound) = previewer.play(phoneSound.uri)
+
+    fun stopPreview() = previewer.stop()
 
     fun setEnabled(sound: Sound, enabled: Boolean) {
         viewModelScope.launch { library.setEnabled(sound, enabled) }

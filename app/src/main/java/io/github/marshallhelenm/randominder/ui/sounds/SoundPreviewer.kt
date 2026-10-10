@@ -10,9 +10,11 @@ import io.github.marshallhelenm.randominder.model.Sound
 class SoundPreviewer(private val context: Context) {
     private var playing: Ringtone? = null
 
-    fun play(sound: Sound) {
+    fun play(sound: Sound) = play(sound.uri)
+
+    fun play(uri: String) {
         stop()
-        playing = RingtoneManager.getRingtone(context, sound.uri.toUri())?.also { it.play() }
+        playing = RingtoneManager.getRingtone(context, uri.toUri())?.also { it.play() }
     }
 
     fun stop() {

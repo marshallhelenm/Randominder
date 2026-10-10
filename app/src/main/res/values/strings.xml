@@ -7,9 +7,7 @@
     <string name="notifications_off_explanation">Notifications are off, so pings can\'t reach you.</string>
     <string name="notifications_off_button">Turn on notifications</string>
     <string name="sounds_hint">Each ping plays a random sound from the ones switched on.</string>
-    <string name="sounds_import">Add from device</string>
-    <string name="sounds_import_failed">Couldn\'t add that file. Pick an audio file.</string>
-    <string name="sounds_import_too_long">That sound is longer than 30 seconds. Pick a shorter one.</string>
+    <string name="sounds_import">Your audio files</string>
     <string name="sound_source_bundled">Built-in</string>
     <string name="sound_source_imported">From your device</string>
     <string name="sound_play">Play</string>
@@ -74,7 +72,7 @@
     <string name="sound_group_out_and_about">Out and about</string>
     <string name="sound_group_phone">Phone sounds</string>
     <string name="sound_group_yours">Your sounds</string>
-    <string name="sounds_add_from_phone">Add from phone</string>
+    <string name="sounds_add_from_phone">Built-in phone sounds</string>
     <string name="sounds_all_on">All on</string>
     <string name="sounds_all_off">All off</string>
     <string name="sound_source_phone">From your phone</string>
@@ -96,4 +94,26 @@
     </plurals>
     <string name="error_no_sounds">Pick at least one sound, or use all sounds</string>
     <string name="done">Done</string>
+    <string name="sounds_add_heading">Add more sounds:</string>
+    <plurals name="import_added">
+        <item quantity="one">Added %d sound.</item>
+        <item quantity="other">Added %d sounds.</item>
+    </plurals>
+    <string name="import_skipped">Skipped %1$s.</string>
+    <plurals name="import_too_long">
+        <item quantity="one">%d over 30 seconds</item>
+        <item quantity="other">%d over 30 seconds</item>
+    </plurals>
+    <plurals name="import_not_audio">
+        <item quantity="one">%d that isn\'t an audio file</item>
+        <item quantity="other">%d that aren\'t audio files</item>
+    </plurals>
+    <string name="phone_sounds_title">Built-in phone sounds</string>
+    <string name="phone_sounds_hint">Tick the ones you want in your sound pool. They stay on your phone; the app just uses them.</string>
+    <string name="phone_sounds_none">No notification sounds found on this phone.</string>
+    <string name="phone_sounds_already_added">Already added</string>
+    <plurals name="phone_sounds_add">
+        <item quantity="one">Add %d sound</item>
+        <item quantity="other">Add %d sounds</item>
+    </plurals>
 </resources>

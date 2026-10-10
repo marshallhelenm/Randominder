@@ -3,7 +3,6 @@ package io.github.marshallhelenm.randominder.sounds
 import android.app.NotificationManager
 import android.content.Context
 import android.media.MediaMetadataRetriever
-import android.media.RingtoneManager
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.core.net.toUri
@@ -233,38 +232,40 @@ class SoundLibraryTest {
         assertEquals(animals.sounds.map { it.id }.toSet(), off)
     }
 
-    private fun firstPhoneNotificationSound(): Uri {
-        val manager = RingtoneManager(context).apply { setType(RingtoneManager.TYPE_NOTIFICATION) }
-        val cursor = manager.cursor
-        assertTrue("the device has no notification sounds", cursor.moveToFirst())
-        return manager.getRingtoneUri(0)
+    @Test
+    fun phoneNotificationSounds_listsReadableSoundsWithTitles() = runBlocking {
+        val listed = library.phoneNotificationSounds()
+
+        assertTrue("the device has no notification sounds", listed.isNotEmpty())
+        assertTrue(listed.all { it.title.isNotBlank() && readable(it.uri) })
+        assertEquals(listed.size, listed.map { it.uri }.toSet().size)
     }
 
     @Test
-    fun addPhoneSound_joinsThePoolOnce_andItsChannelKeepsTheSound() = runBlocking {
-        val uri = firstPhoneNotificationSound()
+    fun addPhoneSounds_addsSeveralAtOnce_onceEach_andTheirChannelsKeepTheSound() = runBlocking {
+        val two = library.phoneNotificationSounds().take(2)
 
-        library.addPhoneSound(uri)
-        library.addPhoneSound(uri)
+        library.addPhoneSounds(two)
+        library.addPhoneSounds(two)
 
-        val phone = db.soundDao().getAll().single()
-        assertEquals(SoundSource.PHONE, phone.source)
-        assertEquals(uri.toString(), phone.uri)
-        assertTrue(phone.displayName.isNotBlank())
-        // The system must accept the phone's own sound as a channel sound, not swap in the default.
-        assertEquals(phone.uri, system.getNotificationChannel(ReminderNotifier.channelIdFor(phone)).sound.toString())
-        library.remove(phone)
+        val added = db.soundDao().getAll()
+        assertEquals(two.map { it.uri }.toSet(), added.map { it.uri }.toSet())
+        assertTrue(added.all { it.source == SoundSource.PHONE })
+        assertEquals(two.map { it.title }.toSet(), added.map { it.displayName }.toSet())
+        // The system must accept the phone's own sounds as channel sounds, not swap in the default.
+        added.forEach { assertEquals(it.uri, system.getNotificationChannel(ReminderNotifier.channelIdFor(it)).sound.toString()) }
+        added.forEach { library.remove(it) }
     }
 
     @Test
     fun removePhoneSound_leavesThePhonesFileAlone() = runBlocking {
-        val uri = firstPhoneNotificationSound()
-        library.addPhoneSound(uri)
+        val first = library.phoneNotificationSounds().first()
+        library.addPhoneSounds(listOf(first))
 
         library.remove(db.soundDao().getAll().single())
 
         assertEquals(emptyList<Sound>(), db.soundDao().getAll())
-        assertTrue(readable(uri.toString()))
+        assertTrue(readable(first.uri))
     }
 
     @Test

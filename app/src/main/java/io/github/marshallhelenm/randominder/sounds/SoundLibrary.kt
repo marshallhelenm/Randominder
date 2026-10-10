@@ -117,13 +117,25 @@ class SoundLibrary(private val context: Context, db: RandominderDatabase) {
     suspend fun setEnabled(sounds: Collection<Sound>, enabled: Boolean) =
         this.sounds.setEnabled(sounds.map { it.id }, enabled)
 
+    /** The phone's own notification sounds, in the order Android lists them. */
+    suspend fun phoneNotificationSounds(): List<PhoneSound> = withContext(Dispatchers.IO) {
+        val manager = RingtoneManager(context).apply { setType(RingtoneManager.TYPE_NOTIFICATION) }
+        val found = mutableListOf<PhoneSound>()
+        manager.cursor.use { cursor ->
+            while (cursor.moveToNext()) {
+                val title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX)?.ifBlank { null } ?: continue
+                found += PhoneSound(title, manager.getRingtoneUri(cursor.position).toString())
+            }
+        }
+        found
+    }
+
     /**
-     * Adds one of the phone's own notification sounds (from the system sound picker) to the pool. The file
-     * stays where it is; the system can always play its own sounds. Re-adding one already there does nothing.
+     * Adds some of the phone's own notification sounds to the pool. The files stay where they are; the system
+     * can always play its own sounds. Ones already in the pool are skipped.
      */
-    suspend fun addPhoneSound(uri: Uri) = withContext(Dispatchers.IO) {
-        val title = RingtoneManager.getRingtone(context, uri)?.getTitle(context)?.ifBlank { null }
-        sounds.insert(Sound(displayName = title ?: "Phone sound", uri = uri.toString(), source = SoundSource.PHONE))
+    suspend fun addPhoneSounds(chosen: List<PhoneSound>) = withContext(Dispatchers.IO) {
+        chosen.forEach { sounds.insert(Sound(displayName = it.title, uri = it.uri, source = SoundSource.PHONE)) }
         syncChannels()
     }
 

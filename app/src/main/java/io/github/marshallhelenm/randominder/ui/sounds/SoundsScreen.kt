@@ -1,13 +1,9 @@
 package io.github.marshallhelenm.randominder.ui.sounds
 
-import android.content.Intent
-import android.media.RingtoneManager
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,18 +19,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.marshallhelenm.randominder.R
 import io.github.marshallhelenm.randominder.model.Sound
 import io.github.marshallhelenm.randominder.model.SoundSource
-import io.github.marshallhelenm.randominder.sounds.ImportResult
+import io.github.marshallhelenm.randominder.sounds.ImportSummary
 import io.github.marshallhelenm.randominder.sounds.SoundGroup
 import io.github.marshallhelenm.randominder.sounds.SoundSection
 import io.github.marshallhelenm.randominder.ui.theme.RandominderTheme
@@ -42,22 +39,19 @@ import io.github.marshallhelenm.randominder.ui.theme.RandominderTheme
 @Composable
 fun SoundsScreen(modifier: Modifier = Modifier, viewModel: SoundsViewModel = viewModel()) {
     val sections by viewModel.sections.collectAsStateWithLifecycle()
-    val importProblem by viewModel.importProblem.collectAsStateWithLifecycle()
-    val pickAudio = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let(viewModel::import)
-    }
-    // Android's own notification-sound picker, which lists and previews every sound on the phone.
-    val pickPhoneSound = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        result.data?.let { IntentCompat.getParcelableExtra(it, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java) }
-            ?.let(viewModel::addPhoneSound)
-    }
-    val pickerTitle = stringResource(R.string.sounds_add_from_phone)
+    val importSummary by viewModel.importSummary.collectAsStateWithLifecycle()
+    val phoneSounds by viewModel.phoneSounds.collectAsStateWithLifecycle()
+    var choosingPhoneSounds by rememberSaveable { mutableStateOf(false) }
+    val pickAudio = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents(), viewModel::import)
     SoundsList(
         sections = sections,
         canImport = viewModel.canImport,
-        importProblem = importProblem,
+        importSummary = importSummary,
         onImport = { pickAudio.launch("audio/*") },
-        onAddPhoneSound = { pickPhoneSound.launch(phoneSoundPicker(pickerTitle)) },
+        onAddPhoneSound = {
+            viewModel.loadPhoneSounds()
+            choosingPhoneSounds = true
+        },
         onAllEnabled = viewModel::setAllEnabled,
         onGroupEnabled = viewModel::setEnabled,
         onPreview = viewModel::preview,
@@ -65,19 +59,29 @@ fun SoundsScreen(modifier: Modifier = Modifier, viewModel: SoundsViewModel = vie
         onRemove = viewModel::remove,
         modifier = modifier
     )
+    if (choosingPhoneSounds) {
+        val close = {
+            viewModel.stopPreview()
+            choosingPhoneSounds = false
+        }
+        PhoneSoundsDialog(
+            phoneSounds = phoneSounds,
+            alreadyAdded = sections.flatMap { it.sounds }.filter { it.source == SoundSource.PHONE }.map { it.uri }.toSet(),
+            onPreview = viewModel::preview,
+            onAdd = {
+                viewModel.addPhoneSounds(it)
+                close()
+            },
+            onDismiss = close
+        )
+    }
 }
-
-private fun phoneSoundPicker(title: String) = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-    .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
-    .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-    .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, false)
-    .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, title)
 
 @Composable
 private fun SoundsList(
     sections: List<SoundSection>,
     canImport: Boolean,
-    importProblem: ImportResult?,
+    importSummary: ImportSummary?,
     onImport: () -> Unit,
     onAddPhoneSound: () -> Unit,
     onAllEnabled: (Boolean) -> Unit,
@@ -94,16 +98,19 @@ private fun SoundsList(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (canImport) OutlinedButton(onClick = onImport) { Text(stringResource(R.string.sounds_import)) }
-            OutlinedButton(onClick = onAddPhoneSound) { Text(stringResource(R.string.sounds_add_from_phone)) }
+        Text(stringResource(R.string.sounds_add_heading), style = MaterialTheme.typography.titleSmall)
+        // Side by side with equal widths; a long label wraps inside its own button instead of stacking them.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (canImport) {
+                OutlinedButton(onClick = onImport, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.sounds_import), textAlign = TextAlign.Center)
+                }
+            }
+            OutlinedButton(onClick = onAddPhoneSound, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.sounds_add_from_phone), textAlign = TextAlign.Center)
+            }
         }
-        val problem = when (importProblem) {
-            ImportResult.TooLong -> R.string.sounds_import_too_long
-            ImportResult.NotAudio -> R.string.sounds_import_failed
-            is ImportResult.Added, null -> null
-        }
-        problem?.let { Text(text = stringResource(it), color = MaterialTheme.colorScheme.error) }
+        importSummary?.let { ImportSummaryText(it) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { onAllEnabled(true) }) { Text(stringResource(R.string.sounds_all_on)) }
             TextButton(onClick = { onAllEnabled(false) }) { Text(stringResource(R.string.sounds_all_off)) }
@@ -133,6 +140,25 @@ private fun SoundsList(
             )
         }
     }
+}
+
+@Composable
+private fun ImportSummaryText(summary: ImportSummary) {
+    val parts = buildList {
+        if (summary.added > 0) add(pluralStringResource(R.plurals.import_added, summary.added, summary.added))
+        if (summary.skipped > 0) {
+            val reasons = buildList {
+                if (summary.tooLong > 0) add(pluralStringResource(R.plurals.import_too_long, summary.tooLong, summary.tooLong))
+                if (summary.notAudio > 0) add(pluralStringResource(R.plurals.import_not_audio, summary.notAudio, summary.notAudio))
+            }
+            add(stringResource(R.string.import_skipped, reasons.joinToString(", ")))
+        }
+    }
+    Text(
+        text = parts.joinToString(" "),
+        // Only an import where nothing worked reads as an error.
+        color = if (summary.added == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable
@@ -178,7 +204,7 @@ private fun SoundsListPreview() {
                 )
             ),
             canImport = true,
-            importProblem = ImportResult.TooLong,
+            importSummary = ImportSummary(added = 3, tooLong = 1, notAudio = 0),
             onImport = {},
             onAddPhoneSound = {},
             onAllEnabled = {},
