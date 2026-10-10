@@ -4,6 +4,8 @@
     <string name="sound_channel_name">Reminders (%1$s)</string>
     <string name="exact_alarm_explanation">Pings may arrive a few minutes late until Randominder is allowed to set exact alarms.</string>
     <string name="exact_alarm_button">Allow exact timing</string>
+    <string name="notifications_off_explanation">Notifications are off, so pings can\'t reach you.</string>
+    <string name="notifications_off_button">Turn on notifications</string>
     <string name="sounds_hint">Each ping plays a random sound from the ones switched on.</string>
     <string name="sounds_import">Add from device</string>
     <string name="sounds_import_failed">Couldn\'t add that file. Pick an audio file.</string>

@@ -233,7 +233,7 @@ class PingSchedulerTest {
     }
 
     @Test
-    fun resumeAfterBoot_dropsMissedPingsAndKeepsTheRest() = runBlocking {
+    fun resume_dropsLongMissedPingsAndKeepsTheRest() = runBlocking {
         addReminder()
         db.scheduledPingDao().insertAll(
             listOf(
@@ -242,22 +242,59 @@ class PingSchedulerTest {
             )
         )
 
-        schedulerAt(monday.atTime(12, 0)).resumeAfterBoot()
+        schedulerAt(monday.atTime(12, 0)).resume()
 
         assertEquals(listOf(millis(monday.atTime(15, 0))), planned().map { it.fireAt })
         assertEquals(millis(monday.atTime(15, 0)), alarms.armedAt)
     }
 
     @Test
-    fun resumeAfterBoot_allPingsMissed_resumesOnNextActiveDay() = runBlocking {
+    fun resume_allPingsLongMissed_resumesOnNextActiveDay() = runBlocking {
         addReminder()
         db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = millis(monday.atTime(10, 0)))))
 
-        schedulerAt(monday.atTime(12, 0)).resumeAfterBoot()
+        schedulerAt(monday.atTime(12, 0)).resume()
 
         val plan = planned()
         assertEquals(4, plan.size)
         assertTrue(plan.all { dateOf(it) == monday.plusDays(2) })
+    }
+
+    @Test
+    fun resume_slightlyLatePing_isKeptAndFiresRightAway() = runBlocking {
+        addReminder()
+        val late = millis(monday.atTime(10, 0))
+        db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = late)))
+
+        // Inside the grace period: an inexact alarm may simply not have been delivered yet.
+        schedulerAt(monday.atTime(10, 10)).resume()
+
+        assertEquals(listOf(late), planned().map { it.fireAt })
+        assertEquals(late, alarms.armedAt)
+    }
+
+    @Test
+    fun resume_isSafeToRepeat() = runBlocking {
+        addReminder()
+        schedulerAt(monday.atTime(8, 0)).replan(1)
+        val before = planned()
+
+        repeat(3) { schedulerAt(monday.atTime(8, 30)).resume() }
+
+        assertEquals(before, planned())
+        assertEquals(before.minOf { it.fireAt }, alarms.armedAt)
+    }
+
+    @Test
+    fun resume_afterAlarmsWereCancelled_rearmsTheNextPing() = runBlocking {
+        addReminder()
+        schedulerAt(monday.atTime(8, 0)).replan(1)
+        // What a force-stop does: the plan stays in the database but the alarm is gone.
+        alarms.cancel()
+
+        schedulerAt(monday.atTime(8, 5)).resume()
+
+        assertEquals(planned().minOf { it.fireAt }, alarms.armedAt)
     }
 
     @Test

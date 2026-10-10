@@ -1,5 +1,6 @@
 package io.github.marshallhelenm.randominder.ui.reminders
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,8 @@ import java.time.LocalTime
 
 @Composable
 fun RemindersScreen(
+    notificationsEnabled: Boolean,
+    onEnableNotifications: () -> Unit,
     canScheduleExact: Boolean,
     onAllowExact: () -> Unit,
     onOpen: (Long) -> Unit,
@@ -50,6 +53,8 @@ fun RemindersScreen(
     val reminders by viewModel.reminders.collectAsStateWithLifecycle()
     RemindersList(
         reminders = reminders,
+        notificationsEnabled = notificationsEnabled,
+        onEnableNotifications = onEnableNotifications,
         canScheduleExact = canScheduleExact,
         onAllowExact = onAllowExact,
         onOpen = onOpen,
@@ -61,6 +66,8 @@ fun RemindersScreen(
 @Composable
 private fun RemindersList(
     reminders: List<Reminder>,
+    notificationsEnabled: Boolean,
+    onEnableNotifications: () -> Unit,
     canScheduleExact: Boolean,
     onAllowExact: () -> Unit,
     onOpen: (Long) -> Unit,
@@ -68,7 +75,11 @@ private fun RemindersList(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        if (!canScheduleExact) ExactAlarmNotice(onAllowExact)
+        // Notifications first: with them off, nothing reaches the user at all.
+        if (!notificationsEnabled) {
+            Notice(R.string.notifications_off_explanation, R.string.notifications_off_button, onEnableNotifications)
+        }
+        if (!canScheduleExact) Notice(R.string.exact_alarm_explanation, R.string.exact_alarm_button, onAllowExact)
         if (reminders.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -95,14 +106,14 @@ private fun RemindersList(
 }
 
 @Composable
-private fun ExactAlarmNotice(onAllowExact: () -> Unit) {
+private fun Notice(@StringRes explanation: Int, @StringRes action: Int, onAction: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.exact_alarm_explanation))
-            Button(onClick = onAllowExact) { Text(stringResource(R.string.exact_alarm_button)) }
+            Text(stringResource(explanation))
+            Button(onClick = onAction) { Text(stringResource(action)) }
         }
     }
 }
@@ -151,6 +162,8 @@ private fun RemindersListPreview() {
                     windowEnd = LocalTime.of(21, 0), pingCount = 1, daysOfWeek = setOf(DayOfWeek.MONDAY, DayOfWeek.THURSDAY)
                 )
             ),
+            notificationsEnabled = false,
+            onEnableNotifications = {},
             canScheduleExact = false,
             onAllowExact = {},
             onOpen = {},

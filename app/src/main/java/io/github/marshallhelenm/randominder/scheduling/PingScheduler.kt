@@ -6,6 +6,7 @@ import io.github.marshallhelenm.randominder.model.Reminder
 import io.github.marshallhelenm.randominder.model.ScheduledPing
 import io.github.marshallhelenm.randominder.model.Sound
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.random.Random
@@ -38,11 +39,13 @@ class PingScheduler(
     }
 
     /**
-     * The saved plan survives a reboot, but pings missed while the phone was off are dropped rather than
-     * delivered late in a burst. A reminder that lost all its remaining pings resumes on its next active day.
+     * Re-arms after anything that may have cancelled the alarm: a reboot, an app update, a force-stop or a
+     * restore. Safe to call on every launch. Pings overdue by more than [LATE_PING_GRACE] are dropped rather
+     * than delivered late in a burst; newer ones fire straight away, since inexact alarms can legitimately
+     * run a few minutes late. A reminder left with no pings resumes on its next active day.
      */
-    suspend fun resumeAfterBoot() {
-        pings.deleteDue(clock.millis())
+    suspend fun resume() {
+        pings.deleteDue(clock.millis() - LATE_PING_GRACE.toMillis())
         val stillPlanned = pings.getReminderIdsWithPings().toSet()
         reminders.getEnabled()
             .filter { it.id !in stillPlanned }
@@ -93,6 +96,8 @@ class PingScheduler(
     }
 
     companion object {
+        val LATE_PING_GRACE: Duration = Duration.ofMinutes(15)
+
         fun from(context: Context) = PingScheduler(
             RandominderDatabase.getInstance(context),
             AndroidAlarmScheduler(context.applicationContext)

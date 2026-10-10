@@ -35,7 +35,13 @@ import io.github.marshallhelenm.randominder.ui.sounds.SoundsScreen
 private enum class AppScreen { Reminders, Sounds, EditReminder }
 
 @Composable
-fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier: Modifier = Modifier) {
+fun RandominderApp(
+    notificationsEnabled: Boolean,
+    onEnableNotifications: () -> Unit,
+    canScheduleExact: Boolean,
+    onAllowExact: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.Reminders) }
     // Null while on Edit means a new reminder. Only read on Edit, and set by openEditor on the way in.
     var editingId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -120,6 +126,8 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
         val screenModifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
         when (currentScreen) {
             AppScreen.Reminders -> RemindersScreen(
+                notificationsEnabled = notificationsEnabled,
+                onEnableNotifications = onEnableNotifications,
                 canScheduleExact = canScheduleExact,
                 onAllowExact = onAllowExact,
                 onOpen = ::openEditor,
