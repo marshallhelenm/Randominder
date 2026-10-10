@@ -1,0 +1,46 @@
+# --- Android / Gradle ---
+.gradle/
+.kotlin/
+local.properties
+**/build/
+
+# --- IDEs ---
+.idea/
+*.iml
+.vscode/
+
+# --- Android Studio / IntelliJ generated ---
+captures/
+.externalNativeBuild/
+.cxx/
+
+# --- Build outputs / artifacts ---
+*.apk
+*.aab
+*.ap_
+*.aar
+
+# --- Logs / profiling / crash dumps ---
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# --- Signing keys / sensitive files ---
+*.jks
+*.keystore
+*.pem
+*.p12
+*.key
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.tmp
+*.temp
+
+# --- Release signing secrets ---
+keystore.properties
