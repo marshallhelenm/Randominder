@@ -1,6 +1,5 @@
 package io.github.marshallhelenm.randominder.scheduling
 
-import io.github.marshallhelenm.randominder.model.Reminder
 import io.github.marshallhelenm.randominder.model.ReminderMessage
 import io.github.marshallhelenm.randominder.model.Sound
 import io.github.marshallhelenm.randominder.model.SoundSource
@@ -9,17 +8,9 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.DayOfWeek
-import java.time.LocalTime
 import kotlin.random.Random
 
 class RandomPicksTest {
-    private val reminder = Reminder(
-        id = 1, name = "Drink water",
-        windowStart = LocalTime.of(9, 0), windowEnd = LocalTime.of(17, 0),
-        pingCount = 3, daysOfWeek = setOf(DayOfWeek.MONDAY)
-    )
-
     private fun messages(vararg texts: String) =
         texts.mapIndexed { i, t -> ReminderMessage(id = i + 1L, reminderId = 1, text = t) }
 
@@ -47,22 +38,22 @@ class RandomPicksTest {
     }
 
     @Test
-    fun messageText_noOptions_fallsBackToReminderName() {
-        assertEquals("Drink water", RandomPicks.messageText(reminder, emptyList(), null, Random(1)))
+    fun messageText_noOptions_isNull() {
+        assertNull(RandomPicks.messageText(emptyList(), null, Random(1)))
     }
 
     @Test
     fun messageText_duplicateTexts_stillAvoidRepeat() {
         val pool = messages("Sip!", "Sip!", "Hydrate")
         repeat(100) { seed ->
-            assertEquals("Hydrate", RandomPicks.messageText(reminder, pool, "Sip!", Random(seed)))
+            assertEquals("Hydrate", RandomPicks.messageText(pool, "Sip!", Random(seed)))
         }
     }
 
     @Test
     fun messageText_picksFromThePool() {
         val pool = messages("Sip!", "Hydrate", "Glass of water?")
-        val seen = (0 until 200).map { RandomPicks.messageText(reminder, pool, null, Random(it)) }.toSet()
+        val seen = (0 until 200).map { RandomPicks.messageText(pool, null, Random(it)) }.toSet()
         assertEquals(setOf("Sip!", "Hydrate", "Glass of water?"), seen)
     }
 

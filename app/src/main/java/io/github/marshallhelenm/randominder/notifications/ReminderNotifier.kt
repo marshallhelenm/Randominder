@@ -51,11 +51,11 @@ class ReminderNotifier(private val context: Context) {
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_logo)
             .setContentTitle(ping.title)
-            .setContentText(ping.text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(ping.text))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(openAppIntent())
             .setAutoCancel(true)
+        // A reminder without messages shows only its name, rather than repeating it as the body.
+        ping.text?.let { builder.setContentText(it).setStyle(NotificationCompat.BigTextStyle().bigText(it)) }
         // Before Android 8 there are no channels and the sound is set per notification.
         ping.sound?.let { builder.setSound(it.uri.toUri()) }
         // One notification per reminder: a new ping replaces that reminder's previous one.

@@ -10,7 +10,7 @@ import java.time.Instant
 import java.time.LocalDate
 import kotlin.random.Random
 
-data class PingNotification(val reminderId: Long, val title: String, val text: String, val sound: Sound?)
+data class PingNotification(val reminderId: Long, val title: String, val text: String?, val sound: Sound?)
 
 class PingScheduler(
     db: RandominderDatabase,
@@ -66,8 +66,8 @@ class PingScheduler(
                 val endedOn = Instant.ofEpochMilli(fired.maxOf { it.fireAt }).atZone(clock.zone).toLocalDate()
                 pings.insertAll(planFrom(reminder, endedOn.plusDays(1)))
             }
-            val text = RandomPicks.messageText(reminder, messages.getForReminder(reminderId), reminder.lastMessage, random)
-            reminders.updateLastMessage(reminderId, text)
+            val text = RandomPicks.messageText(messages.getForReminder(reminderId), reminder.lastMessage, random)
+            text?.let { reminders.updateLastMessage(reminderId, it) }
             PingNotification(reminderId, reminder.name, text, RandomPicks.sound(pool, random))
         }
         rearm()

@@ -48,6 +48,16 @@ class ReminderNotifierTest {
         }
     }
 
+    private fun postedWithTitle(id: Int, expectedTitle: String): List<StatusBarNotification> {
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        while (true) {
+            val posted = system.activeNotifications.filter { it.id == id }
+            val title = posted.lastOrNull()?.notification?.extras?.getString("android.title")
+            if (title == expectedTitle || SystemClock.uptimeMillis() > deadline) return posted
+            SystemClock.sleep(50)
+        }
+    }
+
     @After
     fun tearDown() {
         system.cancelAll()
@@ -81,6 +91,16 @@ class ReminderNotifierTest {
         val posted = postedWithId(7, "Reach up").single()
         assertEquals(ReminderNotifier.channelIdFor(chime), posted.notification.channelId)
         assertEquals("Reach up", posted.notification.extras.getString("android.text"))
+    }
+
+    @Test
+    fun show_withoutText_postsTitleOnly() {
+        notifier.syncChannels(emptyList())
+
+        notifier.show(PingNotification(reminderId = 9, title = "Stretch", text = null, sound = null))
+
+        val posted = postedWithTitle(9, "Stretch").single().notification
+        assertNull(posted.extras.getCharSequence("android.text"))
     }
 
     @Test

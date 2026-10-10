@@ -176,13 +176,15 @@ class PingSchedulerTest {
     }
 
     @Test
-    fun takeDuePings_emptyPools_fallBackToNameAndDefaultSound() = runBlocking {
+    fun takeDuePings_emptyPools_noBodyTextAndDefaultSound() = runBlocking {
         addReminder()
         db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = millis(monday.atTime(10, 0)))))
 
         val ping = schedulerAt(monday.atTime(10, 1)).takeDuePings().single()
 
-        assertEquals("Stretch", ping.text)
+        assertEquals("Stretch", ping.title)
+        assertNull(ping.text)
+        assertNull(db.reminderDao().getById(1)!!.lastMessage)
         assertNull(ping.sound)
     }
 
