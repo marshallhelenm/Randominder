@@ -15,6 +15,21 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
     val reminders: StateFlow<List<Reminder>> = editor.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val pausedUntil: StateFlow<Long?> = editor.observePause()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun pauseUntilTomorrow() {
+        viewModelScope.launch { editor.pauseUntilTomorrow() }
+    }
+
+    fun pauseUntilResumed() {
+        viewModelScope.launch { editor.pauseUntilResumed() }
+    }
+
+    fun resumeAll() {
+        viewModelScope.launch { editor.resumeAll() }
+    }
+
     fun setEnabled(reminder: Reminder, enabled: Boolean) {
         viewModelScope.launch { editor.setEnabled(reminder, enabled) }
     }

@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -32,7 +33,12 @@ enum class AppDestination(@param:StringRes val label: Int, @param:DrawableRes va
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppTopBar(title: String, onBack: (() -> Unit)?, showLogo: Boolean = false) {
+fun AppTopBar(
+    title: String,
+    onBack: (() -> Unit)?,
+    showLogo: Boolean = false,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
     CenterAlignedTopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -45,6 +51,7 @@ fun AppTopBar(title: String, onBack: (() -> Unit)?, showLogo: Boolean = false) {
                 Text(title, fontFamily = TitleFontFamily, fontSize = 26.sp)
             }
         },
+        actions = actions,
         navigationIcon = {
             if (onBack != null) {
                 IconButton(onClick = onBack) {

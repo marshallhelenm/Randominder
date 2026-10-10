@@ -17,6 +17,18 @@ interface ReminderMessageDao {
     @Query("DELETE FROM reminder_messages WHERE reminderId = :reminderId")
     suspend fun deleteForReminder(reminderId: Long)
 
+    @Query("UPDATE reminder_messages SET shownThisRound = 0 WHERE reminderId = :reminderId")
+    suspend fun startNewRound(reminderId: Long)
+
+    @Query("UPDATE reminder_messages SET shownThisRound = 1 WHERE id = :messageId")
+    suspend fun markShown(messageId: Long)
+
+    @Transaction
+    suspend fun recordShown(reminderId: Long, messageId: Long, newRound: Boolean) {
+        if (newRound) startNewRound(reminderId)
+        markShown(messageId)
+    }
+
     // The edit screen saves the whole list at once; a half-applied swap would lose messages.
     @Transaction
     suspend fun replaceForReminder(reminderId: Long, texts: List<String>) {

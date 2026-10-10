@@ -46,8 +46,10 @@ class PingSchedulerTest {
     @After
     fun tearDown() = db.close()
 
+    private val pause = FakePauseStore()
+
     private fun schedulerAt(at: LocalDateTime, zone: ZoneId = this.zone, seed: Int = 1) =
-        PingScheduler(db, alarms, Clock.fixed(at.atZone(zone).toInstant(), zone), Random(seed))
+        PingScheduler(db, alarms, Clock.fixed(at.atZone(zone).toInstant(), zone), Random(seed)) { pause.pausedUntil }
 
     private fun millis(at: LocalDateTime, zone: ZoneId = this.zone) = at.atZone(zone).toInstant().toEpochMilli()
 
@@ -173,6 +175,87 @@ class PingSchedulerTest {
             assertEquals(text, db.reminderDao().getById(1)!!.lastMessage)
             previous = text
         }
+    }
+
+    @Test
+    fun takeDuePings_showsEveryMessageOnceBeforeAnyRepeats() = runBlocking {
+        addReminder()
+        listOf("Reach up", "Touch toes", "Twist").forEach {
+            db.reminderMessageDao().insert(ReminderMessage(reminderId = 1, text = it))
+        }
+        val shown = (0 until 6).map { i ->
+            db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = millis(monday.atTime(9, i)))))
+            schedulerAt(monday.atTime(9, i, 1), seed = i).takeDuePings().single().text
+        }
+
+        assertEquals(3, shown.take(3).toSet().size)
+        assertEquals(3, shown.drop(3).toSet().size)
+        assertNotEquals(shown[2], shown[3])
+    }
+
+    @Test
+    fun snooze_addsAPingTenMinutesLater_evenPastTheWindow() = runBlocking {
+        addReminder()
+        // 16:55 + 10 minutes lands after the 9-5 window closes.
+        schedulerAt(monday.atTime(16, 55)).snooze(1)
+
+        val expected = millis(monday.atTime(17, 5))
+        assertEquals(listOf(expected), planned().map { it.fireAt })
+        assertEquals(expected, alarms.armedAt)
+    }
+
+    @Test
+    fun snooze_disabledOrMissingReminder_doesNothing() = runBlocking {
+        addReminder(enabled = false)
+        schedulerAt(monday.atTime(10, 0)).snooze(1)
+        schedulerAt(monday.atTime(10, 0)).snooze(99)
+
+        assertEquals(emptyList<ScheduledPing>(), db.scheduledPingDao().getForReminder(1))
+        assertNull(alarms.armedAt)
+    }
+
+    @Test
+    fun snooze_whilePaused_isDropped() = runBlocking {
+        addReminder()
+        pause.pausedUntil = PauseStore.UNTIL_RESUMED
+
+        schedulerAt(monday.atTime(10, 0)).snooze(1)
+
+        assertEquals(emptyList<ScheduledPing>(), planned())
+    }
+
+    @Test
+    fun pausedUntilResumed_plansNothingAndCancelsTheAlarm() = runBlocking {
+        addReminder()
+        schedulerAt(monday.atTime(8, 0)).replan(1)
+        pause.pausedUntil = PauseStore.UNTIL_RESUMED
+
+        schedulerAt(monday.atTime(8, 0)).replanAll()
+
+        assertEquals(emptyList<ScheduledPing>(), planned())
+        assertNull(alarms.armedAt)
+    }
+
+    @Test
+    fun pausedUntilTomorrow_skipsTheRestOfToday() = runBlocking {
+        addReminder(days = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY))
+        pause.pausedUntil = millis(monday.plusDays(1).atStartOfDay())
+
+        schedulerAt(monday.atTime(8, 0)).replanAll()
+
+        val plan = planned()
+        assertEquals(4, plan.size)
+        assertTrue(plan.all { dateOf(it) == monday.plusDays(1) })
+    }
+
+    @Test
+    fun anExpiredPause_isIgnored() = runBlocking {
+        addReminder()
+        pause.pausedUntil = millis(monday.atStartOfDay())
+
+        schedulerAt(monday.atTime(8, 0)).replan(1)
+
+        assertTrue(planned().all { dateOf(it) == monday })
     }
 
     @Test

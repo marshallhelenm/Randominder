@@ -4,11 +4,20 @@ import android.content.Context
 import androidx.room.withTransaction
 import io.github.marshallhelenm.randominder.data.local.RandominderDatabase
 import io.github.marshallhelenm.randominder.model.Reminder
+import io.github.marshallhelenm.randominder.scheduling.PauseStore
 import io.github.marshallhelenm.randominder.scheduling.PingScheduler
+import io.github.marshallhelenm.randominder.scheduling.SharedPreferencesPauseStore
 import kotlinx.coroutines.flow.Flow
+import java.time.Clock
+import java.time.LocalDate
 
 /** Every change to a reminder goes through here so its planned pings are always redone afterwards. */
-class ReminderEditor(private val db: RandominderDatabase, private val scheduler: PingScheduler) {
+class ReminderEditor(
+    private val db: RandominderDatabase,
+    private val scheduler: PingScheduler,
+    private val pause: PauseStore,
+    private val clock: Clock = Clock.systemDefaultZone()
+) {
     private val reminders = db.reminderDao()
     private val messages = db.reminderMessageDao()
 
@@ -37,13 +46,31 @@ class ReminderEditor(private val db: RandominderDatabase, private val scheduler:
         scheduler.replan(reminder.id)
     }
 
+    fun observePause(): Flow<Long?> = pause.observe()
+
+    /** Drops the rest of today's pings everywhere; tomorrow plans as usual, with nothing to undo. */
+    suspend fun pauseUntilTomorrow() =
+        setPause(LocalDate.now(clock).plusDays(1).atStartOfDay(clock.zone).toInstant().toEpochMilli())
+
+    suspend fun pauseUntilResumed() = setPause(PauseStore.UNTIL_RESUMED)
+
+    suspend fun resumeAll() = setPause(null)
+
+    private suspend fun setPause(until: Long?) {
+        pause.pausedUntil = until
+        scheduler.replanAll()
+    }
+
     suspend fun delete(id: Long) {
         reminders.deleteById(id)
         scheduler.replan(id)
     }
 
     companion object {
-        fun from(context: Context) =
-            ReminderEditor(RandominderDatabase.getInstance(context), PingScheduler.from(context))
+        fun from(context: Context) = ReminderEditor(
+            RandominderDatabase.getInstance(context),
+            PingScheduler.from(context),
+            SharedPreferencesPauseStore(context)
+        )
     }
 }

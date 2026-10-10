@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.core.app.NotificationManagerCompat
 import io.github.marshallhelenm.randominder.notifications.ReminderNotifier
 import io.github.marshallhelenm.randominder.sounds.SoundLibrary
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +50,17 @@ class RescheduleReceiver : BroadcastReceiver() {
                 // Switch the armed alarm between exact and inexact.
                 AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> scheduler.rearm()
             }
+        }
+    }
+}
+
+class NotificationActionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val reminderId = intent.getLongExtra(ReminderNotifier.EXTRA_REMINDER_ID, -1).takeIf { it >= 0 } ?: return
+        val app = context.applicationContext
+        NotificationManagerCompat.from(app).cancel(ReminderNotifier.notificationIdFor(reminderId))
+        if (intent.action == ReminderNotifier.ACTION_SNOOZE) {
+            runAsync { PingScheduler.from(app).snooze(reminderId) }
         }
     }
 }

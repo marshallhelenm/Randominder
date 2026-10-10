@@ -33,9 +33,14 @@ class MainActivity : ComponentActivity() {
     private var canScheduleExact by mutableStateOf(true)
     private var notificationsEnabled by mutableStateOf(true)
 
+    // Set when a tapped notification asks for its reminder; cleared once the UI has opened it.
+    private var reminderToOpen by mutableStateOf<Long?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Only a fresh launch: after a rotation the request has already been handled.
+        if (savedInstanceState == null) reminderToOpen = intent.reminderIdExtra()
         lifecycleScope.launch {
             // Seeds the bundled sounds on first launch and keeps their channels in step afterwards.
             SoundLibrary.from(applicationContext).ensureBundled()
@@ -50,6 +55,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             RandominderTheme {
                 RandominderApp(
+                    reminderToOpen = reminderToOpen,
+                    onReminderOpened = { reminderToOpen = null },
                     notificationsEnabled = notificationsEnabled,
                     onEnableNotifications = ::openNotificationSettings,
                     canScheduleExact = canScheduleExact,
@@ -58,6 +65,14 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // singleTop: a notification tapped while the app is open arrives here instead of a second activity.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.reminderIdExtra()?.let { reminderToOpen = it }
+    }
+
+    private fun Intent.reminderIdExtra(): Long? = getLongExtra(EXTRA_REMINDER_ID, -1).takeIf { it >= 0 }
 
     override fun onResume() {
         super.onResume()
@@ -80,5 +95,9 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:$packageName".toUri()))
         }
+    }
+
+    companion object {
+        const val EXTRA_REMINDER_ID = "io.github.marshallhelenm.randominder.REMINDER_ID"
     }
 }

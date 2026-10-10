@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,13 +30,17 @@ import io.github.marshallhelenm.randominder.ui.components.AppDestination
 import io.github.marshallhelenm.randominder.ui.components.AppTopBar
 import io.github.marshallhelenm.randominder.ui.reminders.EditReminderScreen
 import io.github.marshallhelenm.randominder.ui.reminders.EditReminderViewModel
+import io.github.marshallhelenm.randominder.ui.reminders.PauseMenu
 import io.github.marshallhelenm.randominder.ui.reminders.RemindersScreen
+import io.github.marshallhelenm.randominder.ui.reminders.RemindersViewModel
 import io.github.marshallhelenm.randominder.ui.sounds.SoundsScreen
 
 private enum class AppScreen { Reminders, Sounds, EditReminder }
 
 @Composable
 fun RandominderApp(
+    reminderToOpen: Long?,
+    onReminderOpened: () -> Unit,
     notificationsEnabled: Boolean,
     onEnableNotifications: () -> Unit,
     canScheduleExact: Boolean,
@@ -64,13 +69,32 @@ fun RandominderApp(
     } else {
         null
     }
-    // Where the user was heading when asked whether to discard their edits.
+    // Where the user was heading when asked whether to discard their edits; for EditReminder, which
+    // reminder (a tapped notification can switch reminders mid-edit).
     var pendingLeave by rememberSaveable { mutableStateOf<AppScreen?>(null) }
+    var pendingOpenId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     // editViewModel only exists on the edit screen, so other screens always leave straight away.
     fun leave(to: AppScreen) {
         if (editViewModel?.hasUnsavedChanges() == true) pendingLeave = to else currentScreen = to
     }
+
+    fun requestOpen(id: Long) {
+        if (editViewModel?.hasUnsavedChanges() == true) {
+            pendingOpenId = id
+            pendingLeave = AppScreen.EditReminder
+        } else {
+            openEditor(id)
+        }
+    }
+
+    LaunchedEffect(reminderToOpen) {
+        val id = reminderToOpen ?: return@LaunchedEffect
+        onReminderOpened()
+        requestOpen(id)
+    }
+
+    val remindersViewModel = viewModel<RemindersViewModel>()
 
     // Reminders is the root, so back there falls through to the system and closes the app.
     BackHandler(enabled = currentScreen != AppScreen.Reminders) { leave(AppScreen.Reminders) }
@@ -79,7 +103,9 @@ fun RandominderApp(
         DiscardChangesDialog(
             onDiscard = {
                 pendingLeave = null
-                currentScreen = destination
+                val openId = pendingOpenId
+                pendingOpenId = null
+                if (destination == AppScreen.EditReminder && openId != null) openEditor(openId) else currentScreen = destination
             },
             onKeepEditing = { pendingLeave = null }
         )
@@ -98,7 +124,15 @@ fun RandominderApp(
             AppTopBar(
                 title = title,
                 onBack = if (currentScreen == AppScreen.EditReminder) { { leave(AppScreen.Reminders) } } else null,
-                showLogo = currentScreen == AppScreen.Reminders
+                showLogo = currentScreen == AppScreen.Reminders,
+                actions = {
+                    if (currentScreen == AppScreen.Reminders) {
+                        PauseMenu(
+                            onPauseUntilTomorrow = remindersViewModel::pauseUntilTomorrow,
+                            onPauseUntilResumed = remindersViewModel::pauseUntilResumed
+                        )
+                    }
+                }
             )
         },
         bottomBar = {
@@ -131,7 +165,8 @@ fun RandominderApp(
                 canScheduleExact = canScheduleExact,
                 onAllowExact = onAllowExact,
                 onOpen = ::openEditor,
-                modifier = screenModifier
+                modifier = screenModifier,
+                viewModel = remindersViewModel
             )
 
             AppScreen.Sounds -> SoundsScreen(modifier = screenModifier.fillMaxWidth().padding(horizontal = 16.dp))

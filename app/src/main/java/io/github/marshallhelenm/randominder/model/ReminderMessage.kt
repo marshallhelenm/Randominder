@@ -21,5 +21,7 @@ data class ReminderMessage(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val reminderId: Long,
-    val text: String
+    val text: String,
+    // Shuffle state: each message is shown once per round before any repeats.
+    val shownThisRound: Boolean = false
 )

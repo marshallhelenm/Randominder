@@ -91,6 +91,7 @@ class ReminderNotifierTest {
 
         val posted = awaitPosted(7) { text(it) == "Reach up" }.single()
         assertEquals(ReminderNotifier.channelIdFor(chime), posted.notification.channelId)
+        assertEquals(listOf("Done", "Snooze 10 min"), posted.notification.actions.map { it.title.toString() })
         assertEquals("Reach up", posted.notification.extras.getString("android.text"))
     }
 

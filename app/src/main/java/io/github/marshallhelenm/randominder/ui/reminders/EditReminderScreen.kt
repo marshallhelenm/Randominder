@@ -61,7 +61,9 @@ fun EditReminderScreen(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LaunchedEffect(reminderId) { viewModel.start(reminderId) }
+    // Keyed on the ViewModel too: reopening the same reminder (e.g. from its notification) brings a fresh
+    // ViewModel with the same id, and it still has to load.
+    LaunchedEffect(viewModel, reminderId) { viewModel.start(reminderId) }
     val form by viewModel.form.collectAsStateWithLifecycle()
     val showErrors by viewModel.showErrors.collectAsStateWithLifecycle()
     val current = form ?: return

@@ -60,4 +60,12 @@
     <string name="discard_body">Your edits to this reminder won\'t be saved.</string>
     <string name="discard">Discard</string>
     <string name="keep_editing">Keep editing</string>
+    <string name="action_done">Done</string>
+    <string name="action_snooze">Snooze 10 min</string>
+    <string name="pause_menu">Pause reminders</string>
+    <string name="pause_until_tomorrow">Pause until tomorrow</string>
+    <string name="pause_until_resumed">Pause until I turn it back on</string>
+    <string name="paused_until_tomorrow">All reminders are paused until tomorrow.</string>
+    <string name="paused_until_resumed">All reminders are paused.</string>
+    <string name="resume">Resume</string>
 </resources>

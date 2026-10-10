@@ -17,7 +17,9 @@ class PingScheduler(
     db: RandominderDatabase,
     private val alarms: AlarmScheduler,
     private val clock: Clock = Clock.systemDefaultZone(),
-    private val random: Random = Random.Default
+    private val random: Random = Random.Default,
+    // Read on every plan so a pause takes effect without the scheduler holding state.
+    private val pausedUntil: () -> Long? = { null }
 ) {
     private val reminders = db.reminderDao()
     private val messages = db.reminderMessageDao()
@@ -66,13 +68,25 @@ class PingScheduler(
                 val endedOn = Instant.ofEpochMilli(fired.maxOf { it.fireAt }).atZone(clock.zone).toLocalDate()
                 pings.insertAll(planFrom(reminder, endedOn.plusDays(1)))
             }
-            val text = RandomPicks.messageText(messages.getForReminder(reminderId), reminder.lastMessage, random)
-            text?.let { reminders.updateLastMessage(reminderId, it) }
+            val pick = RandomPicks.nextMessage(messages.getForReminder(reminderId), reminder.lastMessage, random)
+            pick?.let {
+                messages.recordShown(reminderId, it.message.id, it.newRound)
+                reminders.updateLastMessage(reminderId, it.message.text)
+            }
             // No sound (empty pool) means the default notification sound.
-            PingNotification(reminderId, reminder.name, text, pool.randomOrNull(random))
+            PingNotification(reminderId, reminder.name, pick?.message?.text, pool.randomOrNull(random))
         }
         rearm()
         return notifications
+    }
+
+    /** An extra ping [SNOOZE] from now, allowed past the reminder's window since the user asked for it. */
+    suspend fun snooze(reminderId: Long) {
+        reminders.getById(reminderId)?.takeIf { it.enabled } ?: return
+        val at = clock.millis() + SNOOZE.toMillis()
+        if (at < (pausedUntil() ?: Long.MIN_VALUE)) return
+        pings.insertAll(listOf(ScheduledPing(reminderId = reminderId, fireAt = at)))
+        rearm()
     }
 
     suspend fun rearm() {
@@ -82,13 +96,15 @@ class PingScheduler(
 
     private fun today(): LocalDate = LocalDate.now(clock)
 
-    // The first active day on or after firstDate that still has pings ahead of now. A week covers every weekday.
+    // The first active day on or after firstDate that still has pings ahead of now (and of any pause).
+    // A week covers every weekday; pausing until resumed leaves nothing to plan.
     private fun planFrom(reminder: Reminder, firstDate: LocalDate): List<ScheduledPing> {
-        val now = clock.millis()
+        val notBefore = maxOf(clock.millis(), pausedUntil() ?: Long.MIN_VALUE)
+        if (notBefore == PauseStore.UNTIL_RESUMED) return emptyList()
         var date = firstDate
         repeat(8) {
             val activeDay = PingPlanner.nextActiveDate(reminder, date) ?: return emptyList()
-            val times = PingPlanner.pingsOn(reminder, activeDay, clock.zone, random).filter { it > now }
+            val times = PingPlanner.pingsOn(reminder, activeDay, clock.zone, random).filter { it > notBefore }
             if (times.isNotEmpty()) return times.map { ScheduledPing(reminderId = reminder.id, fireAt = it) }
             date = activeDay.plusDays(1)
         }
@@ -97,10 +113,15 @@ class PingScheduler(
 
     companion object {
         val LATE_PING_GRACE: Duration = Duration.ofMinutes(15)
+        val SNOOZE: Duration = Duration.ofMinutes(10)
 
-        fun from(context: Context) = PingScheduler(
-            RandominderDatabase.getInstance(context),
-            AndroidAlarmScheduler(context.applicationContext)
-        )
+        fun from(context: Context): PingScheduler {
+            val pause = SharedPreferencesPauseStore(context)
+            return PingScheduler(
+                RandominderDatabase.getInstance(context),
+                AndroidAlarmScheduler(context.applicationContext),
+                pausedUntil = { pause.pausedUntil }
+            )
+        }
     }
 }
