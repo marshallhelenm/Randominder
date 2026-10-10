@@ -26,8 +26,6 @@ class PingAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
         runAsync {
-            // Also rebuilds channels, so every sound a ping can pick has one, even right after an app update.
-            SoundLibrary.from(app).ensureBundled()
             val notifier = ReminderNotifier(app)
             PingScheduler.from(app).takeDuePings().forEach(notifier::show)
         }
@@ -36,11 +34,17 @@ class PingAlarmReceiver : BroadcastReceiver() {
 
 class RescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val scheduler = PingScheduler.from(context.applicationContext)
+        val app = context.applicationContext
+        val scheduler = PingScheduler.from(app)
         runAsync {
             when (intent.action) {
                 // Alarms don't survive a reboot or an app update; the saved plan does.
-                Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> scheduler.resumeAfterBoot()
+                Intent.ACTION_BOOT_COMPLETED -> scheduler.resumeAfterBoot()
+                Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                    // An update can add or drop bundled sounds, and pings may fire before the app is opened.
+                    SoundLibrary.from(app).ensureBundled()
+                    scheduler.resumeAfterBoot()
+                }
                 Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> scheduler.replanAll()
                 // Switch the armed alarm between exact and inexact.
                 AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> scheduler.rearm()

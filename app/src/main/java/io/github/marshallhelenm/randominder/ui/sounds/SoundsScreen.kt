@@ -31,7 +31,7 @@ import io.github.marshallhelenm.randominder.model.SoundSource
 import io.github.marshallhelenm.randominder.ui.theme.RandominderTheme
 
 @Composable
-fun SoundsSection(modifier: Modifier = Modifier, viewModel: SoundsViewModel = viewModel()) {
+fun SoundsScreen(modifier: Modifier = Modifier, viewModel: SoundsViewModel = viewModel()) {
     val sounds by viewModel.sounds.collectAsStateWithLifecycle()
     val importFailed by viewModel.importFailed.collectAsStateWithLifecycle()
     val pickAudio = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->

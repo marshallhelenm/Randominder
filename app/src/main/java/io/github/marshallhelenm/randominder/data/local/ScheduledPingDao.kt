@@ -24,9 +24,6 @@ interface ScheduledPingDao {
     @Insert
     suspend fun insertAll(pings: List<ScheduledPing>)
 
-    @Query("DELETE FROM scheduled_pings WHERE id = :id")
-    suspend fun deleteById(id: Long)
-
     @Query("DELETE FROM scheduled_pings WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
 

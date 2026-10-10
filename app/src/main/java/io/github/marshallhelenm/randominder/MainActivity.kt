@@ -17,8 +17,11 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.AlarmManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
+import io.github.marshallhelenm.randominder.sounds.SoundLibrary
 import io.github.marshallhelenm.randominder.ui.RandominderApp
 import io.github.marshallhelenm.randominder.ui.theme.RandominderTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val requestNotifications =
@@ -30,6 +33,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Seeds the bundled sounds on first launch and keeps their channels in step afterwards.
+        lifecycleScope.launch { SoundLibrary.from(applicationContext).ensureBundled() }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {

@@ -46,8 +46,11 @@ class ReminderNotifier(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
-        val channelId = ping.sound?.let(::channelIdFor) ?: DEFAULT_CHANNEL_ID
-        if (manager.getNotificationChannelCompat(channelId) == null) manager.createNotificationChannel(defaultChannel())
+        // Posting to a channel that doesn't exist drops the notification, so a sound without one
+        // (e.g. bundled sounds not yet set up after an update) falls back to the default.
+        val channelId = ping.sound?.let(::channelIdFor)
+            ?.takeIf { manager.getNotificationChannelCompat(it) != null }
+            ?: DEFAULT_CHANNEL_ID.also { manager.createNotificationChannel(defaultChannel()) }
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_logo)
             .setContentTitle(ping.title)

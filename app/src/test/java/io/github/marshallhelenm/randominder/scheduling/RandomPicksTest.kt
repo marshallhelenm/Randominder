@@ -1,12 +1,9 @@
 package io.github.marshallhelenm.randominder.scheduling
 
 import io.github.marshallhelenm.randominder.model.ReminderMessage
-import io.github.marshallhelenm.randominder.model.Sound
-import io.github.marshallhelenm.randominder.model.SoundSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
 
@@ -55,20 +52,5 @@ class RandomPicksTest {
         val pool = messages("Sip!", "Hydrate", "Glass of water?")
         val seen = (0 until 200).map { RandomPicks.messageText(pool, null, Random(it)) }.toSet()
         assertEquals(setOf("Sip!", "Hydrate", "Glass of water?"), seen)
-    }
-
-    @Test
-    fun sound_emptyPool_isNullForDefault() {
-        assertNull(RandomPicks.sound(emptyList(), Random(1)))
-    }
-
-    @Test
-    fun sound_picksFromPool() {
-        val pool = listOf(
-            Sound(id = 1, displayName = "Chime", uri = "android.resource://x/1", source = SoundSource.BUNDLED),
-            Sound(id = 2, displayName = "Bird", uri = "content://media/2", source = SoundSource.IMPORTED)
-        )
-        val seen = (0 until 100).mapNotNull { RandomPicks.sound(pool, Random(it))?.id }.toSet()
-        assertTrue(seen == setOf(1L, 2L))
     }
 }

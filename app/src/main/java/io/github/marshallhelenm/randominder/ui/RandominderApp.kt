@@ -30,14 +30,14 @@ import io.github.marshallhelenm.randominder.ui.components.AppTopBar
 import io.github.marshallhelenm.randominder.ui.reminders.EditReminderScreen
 import io.github.marshallhelenm.randominder.ui.reminders.EditReminderViewModel
 import io.github.marshallhelenm.randominder.ui.reminders.RemindersScreen
-import io.github.marshallhelenm.randominder.ui.sounds.SoundsSection
+import io.github.marshallhelenm.randominder.ui.sounds.SoundsScreen
 
 private enum class AppScreen { Reminders, Sounds, EditReminder }
 
 @Composable
 fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier: Modifier = Modifier) {
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.Reminders) }
-    // Null while on Edit means a new reminder.
+    // Null while on Edit means a new reminder. Only read on Edit, and set by openEditor on the way in.
     var editingId by rememberSaveable { mutableStateOf<Long?>(null) }
     // Bumped on every visit to Edit so each visit gets a fresh form instead of the last one's leftovers.
     var editSession by rememberSaveable { mutableIntStateOf(0) }
@@ -49,7 +49,6 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
     }
 
     fun closeEditor() {
-        editingId = null
         currentScreen = AppScreen.Reminders
     }
 
@@ -62,15 +61,9 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
     // Where the user was heading when asked whether to discard their edits.
     var pendingLeave by rememberSaveable { mutableStateOf<AppScreen?>(null) }
 
+    // editViewModel only exists on the edit screen, so other screens always leave straight away.
     fun leave(to: AppScreen) {
-        when {
-            currentScreen != AppScreen.EditReminder -> currentScreen = to
-            editViewModel?.hasUnsavedChanges() == true -> pendingLeave = to
-            else -> {
-                editingId = null
-                currentScreen = to
-            }
-        }
+        if (editViewModel?.hasUnsavedChanges() == true) pendingLeave = to else currentScreen = to
     }
 
     // Reminders is the root, so back there falls through to the system and closes the app.
@@ -80,7 +73,6 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
         DiscardChangesDialog(
             onDiscard = {
                 pendingLeave = null
-                editingId = null
                 currentScreen = destination
             },
             onKeepEditing = { pendingLeave = null }
@@ -134,7 +126,7 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
                 modifier = screenModifier
             )
 
-            AppScreen.Sounds -> SoundsSection(modifier = screenModifier.fillMaxWidth().padding(horizontal = 16.dp))
+            AppScreen.Sounds -> SoundsScreen(modifier = screenModifier.fillMaxWidth().padding(horizontal = 16.dp))
 
             AppScreen.EditReminder -> editViewModel?.let {
                 EditReminderScreen(

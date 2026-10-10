@@ -1,7 +1,6 @@
 package io.github.marshallhelenm.randominder.scheduling
 
 import io.github.marshallhelenm.randominder.model.ReminderMessage
-import io.github.marshallhelenm.randominder.model.Sound
 import kotlin.random.Random
 
 object RandomPicks {
@@ -15,7 +14,4 @@ object RandomPicks {
     /** Null when the reminder has no text options; its notification then shows just the reminder's name. */
     fun messageText(messages: List<ReminderMessage>, previousText: String?, random: Random): String? =
         pickAvoidingRepeat(messages.map { it.text }.distinct(), previousText, random)
-
-    /** Null means use the default notification sound. */
-    fun sound(pool: List<Sound>, random: Random): Sound? = pool.randomOrNull(random)
 }

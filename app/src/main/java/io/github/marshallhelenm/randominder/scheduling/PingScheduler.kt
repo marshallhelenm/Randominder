@@ -25,12 +25,9 @@ class PingScheduler(
 
     /** Call after a reminder is created, edited, enabled, disabled or deleted. */
     suspend fun replan(reminderId: Long) {
-        val reminder = reminders.getById(reminderId)
-        if (reminder == null) {
-            pings.deleteForReminder(reminderId)
-        } else {
-            pings.replaceForReminder(reminderId, planFrom(reminder, today()))
-        }
+        // A deleted reminder's pings are already gone with it, so it simply gets an empty plan.
+        val plan = reminders.getById(reminderId)?.let { planFrom(it, today()) } ?: emptyList()
+        pings.replaceForReminder(reminderId, plan)
         rearm()
     }
 
@@ -68,7 +65,8 @@ class PingScheduler(
             }
             val text = RandomPicks.messageText(messages.getForReminder(reminderId), reminder.lastMessage, random)
             text?.let { reminders.updateLastMessage(reminderId, it) }
-            PingNotification(reminderId, reminder.name, text, RandomPicks.sound(pool, random))
+            // No sound (empty pool) means the default notification sound.
+            PingNotification(reminderId, reminder.name, text, pool.randomOrNull(random))
         }
         rearm()
         return notifications

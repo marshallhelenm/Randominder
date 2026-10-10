@@ -28,10 +28,6 @@ class SoundsViewModel(application: Application) : AndroidViewModel(application) 
     private val _importFailed = MutableStateFlow(false)
     val importFailed: StateFlow<Boolean> = _importFailed.asStateFlow()
 
-    init {
-        viewModelScope.launch { library.ensureBundled() }
-    }
-
     fun import(source: Uri) {
         _importFailed.value = false
         viewModelScope.launch { _importFailed.value = library.import(source) == null }

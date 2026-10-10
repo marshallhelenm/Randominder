@@ -1,6 +1,7 @@
 package io.github.marshallhelenm.randominder.notifications
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
@@ -37,26 +38,17 @@ class ReminderNotifierTest {
         }
     }
 
-    // Posting is asynchronous; wait for the system's view of this notification id to settle.
-    private fun postedWithId(id: Int, expectedText: String): List<StatusBarNotification> {
+    // Posting is asynchronous; wait until the system's view of this notification id matches [expected].
+    private fun awaitPosted(id: Int, expected: (Notification) -> Boolean): List<StatusBarNotification> {
         val deadline = SystemClock.uptimeMillis() + 5_000
         while (true) {
             val posted = system.activeNotifications.filter { it.id == id }
-            val text = posted.lastOrNull()?.notification?.extras?.getString("android.text")
-            if (text == expectedText || SystemClock.uptimeMillis() > deadline) return posted
+            if (posted.lastOrNull()?.notification?.let(expected) == true || SystemClock.uptimeMillis() > deadline) return posted
             SystemClock.sleep(50)
         }
     }
 
-    private fun postedWithTitle(id: Int, expectedTitle: String): List<StatusBarNotification> {
-        val deadline = SystemClock.uptimeMillis() + 5_000
-        while (true) {
-            val posted = system.activeNotifications.filter { it.id == id }
-            val title = posted.lastOrNull()?.notification?.extras?.getString("android.title")
-            if (title == expectedTitle || SystemClock.uptimeMillis() > deadline) return posted
-            SystemClock.sleep(50)
-        }
-    }
+    private fun text(n: Notification) = n.extras.getString("android.text")
 
     @After
     fun tearDown() {
@@ -88,9 +80,19 @@ class ReminderNotifierTest {
 
         notifier.show(PingNotification(reminderId = 7, title = "Stretch", text = "Reach up", sound = chime))
 
-        val posted = postedWithId(7, "Reach up").single()
+        val posted = awaitPosted(7) { text(it) == "Reach up" }.single()
         assertEquals(ReminderNotifier.channelIdFor(chime), posted.notification.channelId)
         assertEquals("Reach up", posted.notification.extras.getString("android.text"))
+    }
+
+    @Test
+    fun show_soundWithoutAChannel_fallsBackToDefaultChannel() {
+        notifier.syncChannels(emptyList())
+
+        notifier.show(PingNotification(reminderId = 10, title = "Stretch", text = "Reach up", sound = chime))
+
+        val posted = awaitPosted(10) { text(it) == "Reach up" }.single()
+        assertEquals(ReminderNotifier.DEFAULT_CHANNEL_ID, posted.notification.channelId)
     }
 
     @Test
@@ -99,7 +101,7 @@ class ReminderNotifierTest {
 
         notifier.show(PingNotification(reminderId = 9, title = "Stretch", text = null, sound = null))
 
-        val posted = postedWithTitle(9, "Stretch").single().notification
+        val posted = awaitPosted(9) { it.extras.getString("android.title") == "Stretch" }.single().notification
         assertNull(posted.extras.getCharSequence("android.text"))
     }
 
@@ -110,7 +112,7 @@ class ReminderNotifierTest {
         notifier.show(PingNotification(reminderId = 8, title = "Water", text = "Sip", sound = null))
         notifier.show(PingNotification(reminderId = 8, title = "Water", text = "Hydrate", sound = null))
 
-        val posted = postedWithId(8, "Hydrate")
+        val posted = awaitPosted(8) { text(it) == "Hydrate" }
         assertEquals(1, posted.size)
         assertEquals(ReminderNotifier.DEFAULT_CHANNEL_ID, posted.single().notification.channelId)
         assertEquals("Hydrate", posted.single().notification.extras.getString("android.text"))
