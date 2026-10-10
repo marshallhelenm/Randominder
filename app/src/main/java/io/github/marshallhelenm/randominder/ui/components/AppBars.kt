@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import io.github.marshallhelenm.randominder.R
+import io.github.marshallhelenm.randominder.ui.theme.TitleFontFamily
 
 // The app's top-level screens, one per bottom bar item.
 enum class AppDestination(@param:StringRes val label: Int, @param:DrawableRes val icon: Int) {
@@ -24,7 +25,7 @@ enum class AppDestination(@param:StringRes val label: Int, @param:DrawableRes va
 @Composable
 fun AppTopBar(title: String, onBack: (() -> Unit)?) {
     CenterAlignedTopAppBar(
-        title = { Text(title) },
+        title = { Text(title, fontFamily = TitleFontFamily) },
         navigationIcon = {
             if (onBack != null) {
                 IconButton(onClick = onBack) {

@@ -13,6 +13,8 @@ class EditReminderViewModel(application: Application) : AndroidViewModel(applica
     private val editor = ReminderEditor.from(application)
     private var reminderId: Long? = null
     private var started = false
+    // The form as loaded, to tell whether leaving would lose edits.
+    private var original: ReminderForm? = null
 
     // Null until the reminder has loaded.
     private val _form = MutableStateFlow<ReminderForm?>(null)
@@ -28,10 +30,20 @@ class EditReminderViewModel(application: Application) : AndroidViewModel(applica
         started = true
         reminderId = id
         if (id == null) {
-            _form.value = ReminderForm()
+            show(ReminderForm())
         } else {
-            viewModelScope.launch { _form.value = editor.load(id) ?: ReminderForm() }
+            viewModelScope.launch { show(editor.load(id) ?: ReminderForm()) }
         }
+    }
+
+    private fun show(loaded: ReminderForm) {
+        original = loaded
+        _form.value = loaded
+    }
+
+    fun hasUnsavedChanges(): Boolean {
+        val current = _form.value ?: return false
+        return original?.let(current::differsFrom) ?: false
     }
 
     fun update(change: (ReminderForm) -> ReminderForm) = _form.update { it?.let(change) }

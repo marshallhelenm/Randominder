@@ -51,4 +51,8 @@
     <string name="delete_reminder_body">Its messages and upcoming pings go too.</string>
     <string name="time_use_keyboard">Type</string>
     <string name="time_use_dial">Dial</string>
+    <string name="discard_title">Discard changes?</string>
+    <string name="discard_body">Your edits to this reminder won\'t be saved.</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
 </resources>

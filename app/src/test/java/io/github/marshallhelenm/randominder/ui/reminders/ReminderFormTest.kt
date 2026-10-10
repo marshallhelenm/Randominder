@@ -56,6 +56,21 @@ class ReminderFormTest {
     }
 
     @Test
+    fun differsFrom_realEditsCount() {
+        assertEquals(true, valid.copy(name = "Stretch more").differsFrom(valid))
+        assertEquals(true, valid.copy(pingCount = 5).differsFrom(valid))
+        assertEquals(true, valid.copy(daysOfWeek = setOf(DayOfWeek.MONDAY)).differsFrom(valid))
+        assertEquals(true, valid.copy(messages = listOf("Reach up")).differsFrom(valid))
+    }
+
+    @Test
+    fun differsFrom_ignoresChangesThatWouldNotBeSaved() {
+        assertEquals(false, valid.copy(name = "Stretch  ").differsFrom(valid))
+        assertEquals(false, valid.copy(messages = listOf("", "  ")).differsFrom(valid))
+        assertEquals(false, valid.copy(messages = listOf("Reach up ")).differsFrom(valid.copy(messages = listOf("Reach up"))))
+    }
+
+    @Test
     fun from_roundTripsThroughToReminder() {
         val reminder = Reminder(
             id = 3, name = "Water", enabled = false,

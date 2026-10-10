@@ -56,6 +56,7 @@ fun EditReminderScreen(
     reminderId: Long?,
     viewModel: EditReminderViewModel,
     onDone: () -> Unit,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(reminderId) { viewModel.start(reminderId) }
@@ -68,7 +69,7 @@ fun EditReminderScreen(
         isNew = reminderId == null,
         onChange = viewModel::update,
         onSave = { viewModel.save(onDone) },
-        onCancel = onDone,
+        onCancel = onCancel,
         onDelete = { viewModel.delete(onDone) },
         modifier = modifier
     )

@@ -28,6 +28,11 @@ data class ReminderForm(
     /** Blank lines are dropped rather than saved as empty pings. */
     val savedMessages: List<String> get() = messages.map(String::trim).filter(String::isNotEmpty)
 
+    /** Ignores edits that wouldn't change what gets saved, like trailing spaces or an empty message line. */
+    fun differsFrom(other: ReminderForm): Boolean = normalized() != other.normalized()
+
+    private fun normalized() = copy(name = name.trim(), messages = savedMessages)
+
     fun toReminder(id: Long, lastMessage: String?) = Reminder(
         id = id,
         name = name.trim(),

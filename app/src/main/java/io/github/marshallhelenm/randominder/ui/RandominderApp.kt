@@ -5,9 +5,13 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,9 +53,38 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
         currentScreen = AppScreen.Reminders
     }
 
+    // Owned here rather than by the edit screen so every way out (back, Cancel, the tab bar) can check it.
+    val editViewModel = if (currentScreen == AppScreen.EditReminder) {
+        viewModel<EditReminderViewModel>(key = "edit-$editSession")
+    } else {
+        null
+    }
+    // Where the user was heading when asked whether to discard their edits.
+    var pendingLeave by rememberSaveable { mutableStateOf<AppScreen?>(null) }
+
+    fun leave(to: AppScreen) {
+        when {
+            currentScreen != AppScreen.EditReminder -> currentScreen = to
+            editViewModel?.hasUnsavedChanges() == true -> pendingLeave = to
+            else -> {
+                editingId = null
+                currentScreen = to
+            }
+        }
+    }
+
     // Reminders is the root, so back there falls through to the system and closes the app.
-    BackHandler(enabled = currentScreen != AppScreen.Reminders) {
-        if (currentScreen == AppScreen.EditReminder) closeEditor() else currentScreen = AppScreen.Reminders
+    BackHandler(enabled = currentScreen != AppScreen.Reminders) { leave(AppScreen.Reminders) }
+
+    pendingLeave?.let { destination ->
+        DiscardChangesDialog(
+            onDiscard = {
+                pendingLeave = null
+                editingId = null
+                currentScreen = destination
+            },
+            onKeepEditing = { pendingLeave = null }
+        )
     }
 
     val title = when (currentScreen) {
@@ -63,18 +96,20 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { AppTopBar(title = title, onBack = if (currentScreen == AppScreen.EditReminder) ::closeEditor else null) },
+        topBar = {
+            AppTopBar(title = title, onBack = if (currentScreen == AppScreen.EditReminder) { { leave(AppScreen.Reminders) } } else null)
+        },
         bottomBar = {
             AppBottomBar(
                 // Edit is a sub-screen of Reminders.
                 current = if (currentScreen == AppScreen.Sounds) AppDestination.Sounds else AppDestination.Reminders,
-                // Leaving Edit from the bar discards unsaved changes, like Cancel.
                 onSelect = { selected ->
-                    editingId = null
-                    currentScreen = when (selected) {
-                        AppDestination.Reminders -> AppScreen.Reminders
-                        AppDestination.Sounds -> AppScreen.Sounds
-                    }
+                    leave(
+                        when (selected) {
+                            AppDestination.Reminders -> AppScreen.Reminders
+                            AppDestination.Sounds -> AppScreen.Sounds
+                        }
+                    )
                 }
             )
         },
@@ -97,12 +132,28 @@ fun RandominderApp(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier
 
             AppScreen.Sounds -> SoundsSection(modifier = screenModifier.fillMaxWidth().padding(horizontal = 16.dp))
 
-            AppScreen.EditReminder -> EditReminderScreen(
-                reminderId = editingId,
-                viewModel = viewModel<EditReminderViewModel>(key = "edit-$editSession"),
-                onDone = ::closeEditor,
-                modifier = screenModifier
-            )
+            AppScreen.EditReminder -> editViewModel?.let {
+                EditReminderScreen(
+                    reminderId = editingId,
+                    viewModel = it,
+                    onDone = ::closeEditor,
+                    onCancel = { leave(AppScreen.Reminders) },
+                    modifier = screenModifier
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun DiscardChangesDialog(onDiscard: () -> Unit, onKeepEditing: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onKeepEditing,
+        title = { Text(stringResource(R.string.discard_title)) },
+        text = { Text(stringResource(R.string.discard_body)) },
+        confirmButton = {
+            TextButton(onClick = onDiscard) { Text(stringResource(R.string.discard), color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = onKeepEditing) { Text(stringResource(R.string.keep_editing)) } }
+    )
 }
