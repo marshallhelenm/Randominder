@@ -15,5 +15,7 @@ data class Reminder(
     val windowStart: LocalTime,
     val windowEnd: LocalTime,
     val pingCount: Int,
-    val daysOfWeek: Set<DayOfWeek>
+    val daysOfWeek: Set<DayOfWeek>,
+    // Remembered so the next ping can avoid showing the same text twice in a row.
+    val lastMessage: String? = null
 )

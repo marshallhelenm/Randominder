@@ -11,11 +11,17 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders ORDER BY name COLLATE NOCASE")
     fun observeAll(): Flow<List<Reminder>>
 
+    @Query("SELECT * FROM reminders")
+    suspend fun getAll(): List<Reminder>
+
     @Query("SELECT * FROM reminders WHERE enabled = 1")
     suspend fun getEnabled(): List<Reminder>
 
     @Query("SELECT * FROM reminders WHERE id = :id")
     suspend fun getById(id: Long): Reminder?
+
+    @Query("UPDATE reminders SET lastMessage = :text WHERE id = :id")
+    suspend fun updateLastMessage(id: Long, text: String)
 
     @Upsert
     suspend fun upsert(reminder: Reminder): Long

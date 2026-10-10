@@ -12,6 +12,12 @@ interface ScheduledPingDao {
     @Query("SELECT * FROM scheduled_pings ORDER BY fireAt, id LIMIT 1")
     suspend fun getNext(): ScheduledPing?
 
+    @Query("SELECT * FROM scheduled_pings WHERE fireAt <= :now ORDER BY fireAt, id")
+    suspend fun getDue(now: Long): List<ScheduledPing>
+
+    @Query("SELECT DISTINCT reminderId FROM scheduled_pings")
+    suspend fun getReminderIdsWithPings(): List<Long>
+
     @Query("SELECT * FROM scheduled_pings WHERE reminderId = :reminderId ORDER BY fireAt")
     suspend fun getForReminder(reminderId: Long): List<ScheduledPing>
 
@@ -20,6 +26,12 @@ interface ScheduledPingDao {
 
     @Query("DELETE FROM scheduled_pings WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM scheduled_pings WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    @Query("DELETE FROM scheduled_pings WHERE fireAt <= :now")
+    suspend fun deleteDue(now: Long)
 
     @Query("DELETE FROM scheduled_pings WHERE reminderId = :reminderId")
     suspend fun deleteForReminder(reminderId: Long)

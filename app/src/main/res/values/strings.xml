@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Randominder</string>
+    <string name="default_channel_name">Reminders (default sound)</string>
+    <string name="sound_channel_name">Reminders (%1$s)</string>
+    <string name="exact_alarm_explanation">Pings may arrive a few minutes late until Randominder is allowed to set exact alarms.</string>
+    <string name="exact_alarm_button">Allow exact timing</string>
 </resources>
