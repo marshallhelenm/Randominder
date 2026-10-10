@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "3f01c497b3e044fcfcd030d04c3f785c",
+    "identityHash": "52358ea852feafb4981432cc26dbb9b7",
     "entities": [
       {
         "tableName": "reminders",
@@ -119,7 +119,7 @@
       },
       {
         "tableName": "sounds",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `displayName` TEXT NOT NULL, `uri` TEXT NOT NULL, `source` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `displayName` TEXT NOT NULL, `uri` TEXT NOT NULL, `source` TEXT NOT NULL, `enabled` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -143,6 +143,12 @@
             "fieldPath": "source",
             "columnName": "source",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -230,7 +236,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3f01c497b3e044fcfcd030d04c3f785c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '52358ea852feafb4981432cc26dbb9b7')"
     ]
   }
 }

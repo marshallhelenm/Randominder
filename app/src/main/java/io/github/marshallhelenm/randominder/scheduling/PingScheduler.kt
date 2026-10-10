@@ -57,7 +57,7 @@ class PingScheduler(
     suspend fun takeDuePings(): List<PingNotification> {
         val due = pings.getDue(clock.millis())
         pings.deleteByIds(due.map { it.id })
-        val pool = sounds.getAll()
+        val pool = sounds.getEnabled()
         // Several due pings for one reminder (e.g. a late alarm) collapse into a single notification.
         val notifications = due.groupBy { it.reminderId }.mapNotNull { (reminderId, fired) ->
             val reminder = reminders.getById(reminderId) ?: return@mapNotNull null

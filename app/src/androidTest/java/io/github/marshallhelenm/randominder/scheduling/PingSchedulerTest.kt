@@ -208,6 +208,27 @@ class PingSchedulerTest {
     }
 
     @Test
+    fun takeDuePings_neverPicksASwitchedOffSound() = runBlocking {
+        addReminder()
+        db.soundDao().insert(Sound(displayName = "On", uri = "content://media/1", source = SoundSource.IMPORTED))
+        db.soundDao().insert(Sound(displayName = "Off", uri = "content://media/2", source = SoundSource.IMPORTED, enabled = false))
+        repeat(20) { i ->
+            db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = millis(monday.atTime(9, i)))))
+            val ping = schedulerAt(monday.atTime(9, i, 1), seed = i).takeDuePings().single()
+            assertEquals("On", ping.sound?.displayName)
+        }
+    }
+
+    @Test
+    fun takeDuePings_everySoundSwitchedOff_usesDefaultSound() = runBlocking {
+        addReminder()
+        db.soundDao().insert(Sound(displayName = "Off", uri = "content://media/2", source = SoundSource.IMPORTED, enabled = false))
+        db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = millis(monday.atTime(10, 0)))))
+
+        assertNull(schedulerAt(monday.atTime(10, 1)).takeDuePings().single().sound)
+    }
+
+    @Test
     fun takeDuePings_nothingDue_returnsNothingAndKeepsPlan() = runBlocking {
         addReminder()
         db.scheduledPingDao().insertAll(listOf(ScheduledPing(reminderId = 1, fireAt = millis(monday.atTime(10, 0)))))

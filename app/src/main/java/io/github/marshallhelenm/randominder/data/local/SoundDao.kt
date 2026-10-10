@@ -15,6 +15,12 @@ interface SoundDao {
     @Query("SELECT * FROM sounds")
     suspend fun getAll(): List<Sound>
 
+    @Query("SELECT * FROM sounds WHERE enabled = 1")
+    suspend fun getEnabled(): List<Sound>
+
+    @Query("UPDATE sounds SET enabled = :enabled WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean)
+
     // Re-adding a file that's already in the pool is a no-op; returns -1 in that case.
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(sound: Sound): Long

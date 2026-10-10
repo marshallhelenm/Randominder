@@ -4,4 +4,12 @@
     <string name="sound_channel_name">Reminders (%1$s)</string>
     <string name="exact_alarm_explanation">Pings may arrive a few minutes late until Randominder is allowed to set exact alarms.</string>
     <string name="exact_alarm_button">Allow exact timing</string>
+    <string name="sounds_title">Sounds</string>
+    <string name="sounds_import">Add from device</string>
+    <string name="sounds_import_failed">Couldn\'t add that file. Pick an audio file.</string>
+    <string name="sound_source_bundled">Built-in</string>
+    <string name="sound_source_imported">From your device</string>
+    <string name="sound_play">Play</string>
+    <string name="sound_remove">Remove</string>
+    <string name="sound_toggle">Use %1$s for pings</string>
 </resources>

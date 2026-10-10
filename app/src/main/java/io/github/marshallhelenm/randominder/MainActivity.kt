@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.AlarmManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import io.github.marshallhelenm.randominder.ui.sounds.SoundsSection
 import io.github.marshallhelenm.randominder.ui.theme.RandominderTheme
 
 class MainActivity : ComponentActivity() {
@@ -75,10 +77,16 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun HomeScreen(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(
+    canScheduleExact: Boolean,
+    onAllowExact: () -> Unit,
+    modifier: Modifier = Modifier,
+    // A slot so the preview can render without a ViewModel.
+    sounds: @Composable () -> Unit = { SoundsSection(modifier = Modifier.fillMaxWidth()) }
+) {
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = "Randominder", style = MaterialTheme.typography.headlineMedium)
@@ -88,6 +96,7 @@ fun HomeScreen(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier: Mo
                 Text(stringResource(R.string.exact_alarm_button))
             }
         }
+        sounds()
     }
 }
 
@@ -95,6 +104,6 @@ fun HomeScreen(canScheduleExact: Boolean, onAllowExact: () -> Unit, modifier: Mo
 @Composable
 fun HomeScreenPreview() {
     RandominderTheme {
-        HomeScreen(canScheduleExact = false, onAllowExact = {})
+        HomeScreen(canScheduleExact = false, onAllowExact = {}, sounds = {})
     }
 }

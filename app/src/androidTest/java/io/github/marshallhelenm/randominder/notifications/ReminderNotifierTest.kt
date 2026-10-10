@@ -58,8 +58,8 @@ class ReminderNotifierTest {
     fun syncChannels_createsOnePerSoundWithItsUri_plusDefault() {
         notifier.syncChannels(listOf(chime, bird))
 
-        assertEquals(chime.uri, system.getNotificationChannel("sound_41").sound.toString())
-        assertEquals(bird.uri, system.getNotificationChannel("sound_42").sound.toString())
+        assertEquals(chime.uri, system.getNotificationChannel(ReminderNotifier.channelIdFor(chime)).sound.toString())
+        assertEquals(bird.uri, system.getNotificationChannel(ReminderNotifier.channelIdFor(bird)).sound.toString())
         assertNotNull(system.getNotificationChannel(ReminderNotifier.DEFAULT_CHANNEL_ID))
     }
 
@@ -68,8 +68,8 @@ class ReminderNotifierTest {
         notifier.syncChannels(listOf(chime, bird))
         notifier.syncChannels(listOf(chime))
 
-        assertNotNull(system.getNotificationChannel("sound_41"))
-        assertNull(system.getNotificationChannel("sound_42"))
+        assertNotNull(system.getNotificationChannel(ReminderNotifier.channelIdFor(chime)))
+        assertNull(system.getNotificationChannel(ReminderNotifier.channelIdFor(bird)))
     }
 
     @Test
@@ -79,7 +79,7 @@ class ReminderNotifierTest {
         notifier.show(PingNotification(reminderId = 7, title = "Stretch", text = "Reach up", sound = chime))
 
         val posted = postedWithId(7, "Reach up").single()
-        assertEquals("sound_41", posted.notification.channelId)
+        assertEquals(ReminderNotifier.channelIdFor(chime), posted.notification.channelId)
         assertEquals("Reach up", posted.notification.extras.getString("android.text"))
     }
 

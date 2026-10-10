@@ -4,8 +4,8 @@ import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import io.github.marshallhelenm.randominder.data.local.RandominderDatabase
 import io.github.marshallhelenm.randominder.notifications.ReminderNotifier
+import io.github.marshallhelenm.randominder.sounds.SoundLibrary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,11 +26,10 @@ class PingAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
         runAsync {
-            val due = PingScheduler.from(app).takeDuePings()
-            if (due.isEmpty()) return@runAsync
+            // Also rebuilds channels, so every sound a ping can pick has one, even right after an app update.
+            SoundLibrary.from(app).ensureBundled()
             val notifier = ReminderNotifier(app)
-            notifier.syncChannels(RandominderDatabase.getInstance(app).soundDao().getAll())
-            due.forEach(notifier::show)
+            PingScheduler.from(app).takeDuePings().forEach(notifier::show)
         }
     }
 }

@@ -32,7 +32,7 @@ class ReminderNotifier(private val context: Context) {
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
         val channels = sounds.map {
-            // A channel's sound can't change after creation, so the id is tied to the sound row, not its name.
+            // A channel's sound can't change after creation, so the id is tied to the sound itself, not its name.
             NotificationChannelCompat.Builder(channelIdFor(it), NotificationManagerCompat.IMPORTANCE_DEFAULT)
                 .setName(context.getString(R.string.sound_channel_name, it.displayName))
                 .setSound(it.uri.toUri(), audio)
@@ -77,6 +77,8 @@ class ReminderNotifier(private val context: Context) {
     companion object {
         const val DEFAULT_CHANNEL_ID = "reminders_default"
 
-        fun channelIdFor(sound: Sound) = "sound_${sound.id}"
+        // Android revives a deleted channel's old settings if its id is reused, so the id must change
+        // whenever the file does, even if a sound row id is reused (e.g. after the database is recreated).
+        fun channelIdFor(sound: Sound) = "sound_${sound.id}_${Integer.toHexString(sound.uri.hashCode())}"
     }
 }

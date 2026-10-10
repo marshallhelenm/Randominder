@@ -21,5 +21,7 @@ data class Sound(
     val id: Long = 0,
     val displayName: String,
     val uri: String,
-    val source: SoundSource
+    val source: SoundSource,
+    // Off means pings skip it; it keeps its channel so per-sound system settings survive toggling.
+    val enabled: Boolean = true
 )
